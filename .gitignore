@@ -1,0 +1,19 @@
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Output & benchmark artifacts
+benchmarks/results/
+*.png
+*.csv
+.DS_Store

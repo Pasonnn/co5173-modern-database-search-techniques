@@ -125,12 +125,15 @@ co5173-modern-database-search-techniques/
 │   ├── learned_rmi.py     # Static Recursive Model Index with bounded error searches
 │   └── learned_alex.py    # Dynamic ALEX with gapped arrays & galloping scan
 ├── benchmarks/
-│   └── run.py             # Empirical benchmark measuring throughput, latency, footprint
+│   ├── run.py             # Empirical benchmark measuring throughput, latency, footprint
+│   └── stress_test.py     # Section 4.2 workload stress-testing suite (skew, ingestion, text, compression)
 ├── tests/
 │   └── test_all.py        # Automated test suite verifying correctness of all 5 engines
 ├── report/
-│   └── outline.md         # Comprehensive report outline aligned with course syllabus
-├── Makefile               # Shortcuts for test, bench, and clean targets
+│   ├── outline.md         # Comprehensive report syllabus outline
+│   └── final_report.md    # Complete master-level technical research report
+├── Makefile               # Targets: test, bench, stress, clean
+├── run.sh                 # Standard execution helper script
 ├── requirements.txt       # Minimal dependency configuration (standard-library first)
 ├── CITATION.cff           # Standard academic citation metadata
 ├── LICENSE                # MIT License
@@ -159,7 +162,14 @@ ALL 5 SEARCH TECHNIQUE SELF-CHECKS PASSED SUCCESSFULLY.
 Execute side-by-side performance evaluation measuring ingestion throughput, point lookup latency, range query throughput, and memory footprint:
 ```bash
 make bench
-# OR: python3 benchmarks/run.py
+# OR: ./run.sh bench
+```
+
+### 3. Run Workload Stress-Testing Suite (Section 4.2)
+Execute empirical stress tests evaluating Zipfian skew, high-throughput write ingestion, posting list intersections, and scale compression:
+```bash
+make stress
+# OR: ./run.sh stress
 ```
 
 *Sample empirical benchmark output:*

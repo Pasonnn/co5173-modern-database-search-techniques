@@ -12,6 +12,10 @@ case "$CMD" in
     echo "Running comparative empirical benchmarks..."
     python3 benchmarks/run.py
     ;;
+  stress)
+    echo "Running workload stress-testing suite (Section 4.2)..."
+    python3 benchmarks/stress_test.py
+    ;;
   clean)
     echo "Cleaning Python cache files..."
     find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

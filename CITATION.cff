@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this benchmark suite or educational database search implementations, please cite as below."
+authors:
+  - family-names: "Nguyen"
+    given-names: "Dinh Hoang Son"
+    affiliation: "Ho Chi Minh City University of Technology (HCMUT - VNU-HCM)"
+  - family-names: "Nguyen"
+    given-names: "Doan Phuc An"
+    affiliation: "Ho Chi Minh City University of Technology (HCMUT - VNU-HCM)"
+title: "Search Techniques in Modern Database Systems: An Empirical Study across the RUM Trade-off Space"
+version: 1.0.0
+date-released: 2026-10-31
+url: "https://github.com/Pasonnn/co5173-modern-database-search-techniques"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Nguyen"
+      given-names: "Dinh Hoang Son"
+    - family-names: "Nguyen"
+      given-names: "Doan Phuc An"
+  title: "Search Techniques in Modern Database Systems"
+  year: 2026
+  institution: "Faculty of Computer Science and Engineering, HCMUT - VNU-HCM"

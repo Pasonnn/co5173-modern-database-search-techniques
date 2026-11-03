@@ -1,0 +1,71 @@
+# FIGURE CITATIONS, PROVENANCE, AND SOURCE ATTRIBUTION
+# Project: Search Techniques in Modern Database Systems (CO5173 - HCMUT)
+
+This file documents the provenance, authorship, and licensing of all visual figures 
+and architectural diagrams located in the `report/figures/` directory.
+
+========================================================================================
+1. bplus_tree_reference.png
+========================================================================================
+- File: report/figures/bplus_tree_reference.png
+- Type: Official External Architectural Reference
+- Source: Wikimedia Commons / Academic Archive
+- URL: https://upload.wikimedia.org/wikipedia/commons/3/37/Bplustree.png
+- Licensing: Creative Commons Attribution-Share Alike / Public Domain
+- Conceptual Origin & Paper: 
+  Bayer, R., & McCreight, E. (1972). "Organization and Maintenance of Large Ordered Indices." 
+  Acta Informatica, 1(3), 173–189. Comer, D. (1979). "The Ubiquitous B-Tree." ACM Computing Surveys.
+- Description: Illustrates standard B+ Tree internal page routing keys and leaf page pointer 
+  chaining (modeling MySQL InnoDB page layouts).
+
+========================================================================================
+2. rum_conjecture.svg
+========================================================================================
+- File: report/figures/rum_conjecture.svg
+- Type: Authored Vector Diagram (Designed via scripts/generate_figures.py)
+- Attribution: Authored by project team based on theoretical literature.
+- Academic Foundation & Paper:
+  Athanassoulis, M., Kester, M. S., Maas, L. M., Stoica, R., Idreos, S., Ailamaki, A., 
+  & Callaghan, M. (2016). "Designing Access Methods: The RUM Conjecture." 
+  Proceedings of the 19th International Conference on Extending Database Technology (EDBT), pp. 461–466.
+- Description: Vector graphic illustrating the RUM trade-off triangle (Read, Update, and 
+  Memory Amplification) with mapped positions for B+ Trees, LSM-Trees, Static RMI, Dynamic ALEX, 
+  and Inverted Indexes.
+
+========================================================================================
+3. lsm_tree_architecture.svg
+========================================================================================
+- File: report/figures/lsm_tree_architecture.svg
+- Type: Authored Vector Diagram (Designed via scripts/generate_figures.py)
+- Attribution: Authored by project team synthesizing production storage engine designs.
+- Academic Foundation & Papers:
+  - O'Neil, P., Cheng, E., Gawlick, D., & O'Neil, E. (1996). "The Log-Structured Merge-Tree (LSM-Tree)." 
+    Acta Informatica, 33(4), 351–385.
+  - RocksDB Architecture Documentation (Facebook/Meta Open Source, 2014–2024).
+- Description: Schematizes the write ingestion pipeline through sequential WAL and RAM MemTable, 
+  spilling into hierarchical leveled SSTables with in-memory Bloom filters and multi-way merge compaction.
+
+========================================================================================
+4. learned_index_rmi.svg
+========================================================================================
+- File: report/figures/learned_index_rmi.svg
+- Type: Authored Vector Diagram (Designed via scripts/generate_figures.py)
+- Attribution: Authored by project team based on published architectural specifications.
+- Academic Foundation & Papers:
+  - Kraska, T., Beutel, A., Chi, E. H., Dean, J., & Polyzotis, N. (2018). "The Case for Learned Index Structures." 
+    Proceedings of the 2018 ACM SIGMOD International Conference on Management of Data, pp. 489–504.
+  - Dai, Y., Ji, H., Liu, C., & Zhang, Y. (2020). "From WiscKey to BOURBON: A Learned Index for Log-Structured Merge Trees." 
+    USENIX OSDI '20, pp. 863–879.
+- Description: Depicts the two-stage Recursive Model Index (RMI) hierarchy approximating cumulative 
+  distribution functions (CDF) to project bounded search windows over sorted arrays.
+
+========================================================================================
+5. benchmark_comparison.svg
+========================================================================================
+- File: report/figures/benchmark_comparison.svg
+- Type: Empirical Data Visualization (Generated via scripts/generate_figures.py)
+- Attribution: Generated directly from real empirical benchmark output of this repository.
+- Source Benchmark: benchmarks/results/latest_run.txt & benchmarks/results/latest_stress_test.txt
+- Test Parameters: N=10,000 real-world World Cities Geoname keys, 1 warmup run + 5 repeated measurement trials.
+- Description: Comparative head-to-head bar plots evaluating point lookup latency (µs) and memory 
+  footprint per key (Bytes/key) across B+ Tree, Static RMI, Dynamic ALEX, and LSM-Tree.

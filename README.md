@@ -126,12 +126,17 @@ co5173-modern-database-search-techniques/
 │   └── learned_alex.py    # Dynamic ALEX with gapped arrays & galloping scan
 ├── benchmarks/
 │   ├── run.py             # Empirical benchmark measuring throughput, latency, footprint
-│   └── stress_test.py     # Section 4.2 workload stress-testing suite (skew, ingestion, text, compression)
+│   ├── stress_test.py     # Section 4.2 workload stress-testing suite (skew, ingestion, text, compression)
+│   └── results/           # Persisted benchmark and stress-test output logs
 ├── tests/
 │   └── test_all.py        # Automated test suite verifying correctness of all 5 engines
 ├── report/
 │   ├── outline.md         # Comprehensive report syllabus outline
-│   └── final_report.md    # Complete master-level technical research report
+│   ├── final_report.md    # Complete master-level technical research report
+│   ├── slides_content.md  # 24-slide presentation content with speaker scripts & analogies
+│   └── figures/           # Vector architecture SVGs & figure provenance catalog (sources.txt)
+├── scripts/
+│   └── generate_figures.py # Script generating SVG architecture and benchmark diagrams
 ├── Makefile               # Targets: test, bench, stress, clean
 ├── run.sh                 # Standard execution helper script
 ├── requirements.txt       # Minimal dependency configuration (standard-library first)
@@ -172,21 +177,22 @@ make stress
 # OR: ./run.sh stress
 ```
 
-*Sample empirical benchmark output:*
+*Sample empirical benchmark output (N=10,000 real Geoname keys, 5 repeated trials):*
 ```
-===============================================================================================
-Engine           | Ingest (ops/s)   | Point Lookup (µs)  | Range (ops/s)   | Bytes/Key   
------------------------------------------------------------------------------------------------
-B+ Tree          |        1534388 |             0.42 |        232644 |       87.3
-LSM-Tree         |          81289 |             2.75 |         15032 |      150.7
-Static RMI       |         889099 |             0.88 |        185183 |        3.5
-Dynamic ALEX     |         176308 |             4.06 |          7371 |       93.9
-===============================================================================================
+=========================================================================================================
+Engine         | Ingest (ops/s) (µ ± σ)     | Lookup (µs) (µ ± σ)      | Range (ops/s) (µ ± σ)  | Bytes/Key 
+---------------------------------------------------------------------------------------------------------
+B+ Tree        |    1176869 ± 91008         |     0.77 ± 0.07          |    25754 ± 2932        |      90.1
+LSM-Tree       |      19731 ± 6317          |    16.03 ± 8.83          |     1599 ± 448         |     153.7
+Static RMI     |     840904 ± 131420        |     1.86 ± 0.25          |    15007 ± 2556        |       1.4
+Dynamic ALEX   |      86739 ± 14632         |     6.44 ± 1.23          |      698 ± 190         |     104.3
+=========================================================================================================
 
---- Benchmarking Inverted Index (BM25 + Boolean Search) ---
-Indexed 5 documents in 0.22 ms
-BM25 Top Match: Doc ID 3 (Score: 2.427)
-Boolean AND Match for ['database', 'search']: [4]
+--- Lexical Inverted Index on Real Text Corpus (BM25 + Boolean Search) ---
+Indexed 1,655 real documents in 58.86 ms
+BM25 Top Match: Doc ID 131 (Score: 11.425)
+BM25 Search Latency (5 runs): 266.50 ± 105.36 µs
+Boolean AND ['life', 'time'] matched 2 documents: [196, 298]
 ```
 
 ---
@@ -194,13 +200,13 @@ Boolean AND Match for ['database', 'search']: [4]
 ## 6. Workload Stress-Testing Insights
 
 1. **Storage Compression in Learned Models:**
-   - Static RMI achieves **~3.5 Bytes/key**, representing a **25× memory reduction** compared to traditional B+ Tree pointer graphs (~87.3 Bytes/key).
+   - Static RMI achieves **0.7 to 1.4 Bytes/key**, representing a **>64× to 120× memory reduction** compared to traditional B+ Tree pointer graphs (90.1 Bytes/key).
 2. **Ingestion Bottlenecks:**
    - In-memory B+ Trees achieve high throughput for small datasets, but degrade rapidly under random I/O write amplification when pages exceed buffer pool limits. LSM-Trees amortize updates via sequential MemTable appends and background compaction.
 3. **Point Read-Heavy Workloads:**
-   - B+ Trees and Static RMI deliver sub-microsecond point lookups. Dynamic ALEX trades local gap shift maintenance for near-$O(1)$ model-guided galloping lookups.
+   - B+ Trees deliver deterministic **0.77 ± 0.07 µs** lookups (dropping to **0.65 µs** under Zipfian query skew). Static RMI delivers **1.86 ± 0.25 µs** with zero pointer graphs. Dynamic ALEX trades local gap shift maintenance for near-$O(1)$ model-guided galloping lookups.
 4. **Lexical vs. Primary-Key Retrieval:**
-   - Inverted indexing trade-offs diverge from relational trees: it pays high indexing CPU compute ($O(|D|)$ tokenization and posting generation) to enable sub-millisecond multi-attribute text searches across millions of documents.
+   - Inverted indexing achieves a **43.3× speedup** over brute-force relational scanning on multi-term boolean queries, pruning non-matching documents in $O(1)$ term lookup time.
 
 ---
 

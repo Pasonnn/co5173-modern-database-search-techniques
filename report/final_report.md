@@ -1,12 +1,11 @@
 # VIETNAM NATIONAL UNIVERSITY HO CHI MINH CITY
-# HO CHI MINH CITY UNIVERSITY OF TECHNOLOGY
+## HO CHI MINH CITY UNIVERSITY OF TECHNOLOGY
 ### FACULTY OF COMPUTER SCIENCE AND ENGINEERING
 
 ---
 
-# COURSE PROJECT REPORT
-## SEARCH TECHNIQUES IN MODERN DATABASE SYSTEMS
-### An Architectural, Theoretical, and Empirical Analysis Across the RUM Trade-Off Space
+# SEARCH TECHNIQUES IN MODERN DATABASE SYSTEMS
+## An Architectural, Theoretical, and Empirical Analysis Across the RUM Trade-Off Space
 
 **Course:** Data Engineering (CO5173)  
 **Instructor:** Assoc. Prof. Tran Minh Quang  
@@ -22,18 +21,18 @@
 
 ## EXECUTIVE SUMMARY
 
-Modern data management systems no longer rely on a single, universal indexing strategy. As hardware architectures have diverged and workload demands have specialized into real-time ingestion, microsecond point lookups, and arbitrary lexical queries, database architects have developed divergent search techniques.
+For decades, relational database management systems treated the B+ Tree as the default indexing standard for structured data. However, the divergence of modern hardware architectures—characterized by multi-core parallelism, high-bandwidth NVMe solid-state storage, and vast DRAM capacities—alongside specialized workload demands has exposed the boundaries of a single, universal indexing strategy. Applications running high-velocity sensor ingestion, microsecond transactional lookups, complex multi-attribute text retrieval, and analytical columnar aggregation make mutually incompatible demands on the storage hierarchy.
 
-This report investigates the five foundational search paradigms powering modern production databases:
-1. **B+ Tree:** Comparison-based pointer hierarchy (MySQL InnoDB, SQLite, PostgreSQL).
-2. **LSM-Tree:** Write-optimized log-structured merge hierarchy (Apache Cassandra, RocksDB, Google Bigtable).
-3. **Lexical Inverted Index & BM25:** Tokenized posting lists and probabilistic relevance ranking (Elasticsearch, Apache Lucene).
-4. **Static Learned Index (RMI):** Recursive CDF function approximation for immutable storage (BOURBON, Google BigQuery, columnar formats).
-5. **Dynamic Updatable Learned Index (ALEX):** Adaptive machine-learned model with gapped data slots (in-memory OLAP/OLTP hybrids).
+This report presents an architectural, theoretical, and empirical investigation into the five foundational search paradigms underpinning modern data systems:
+1. **Clustered Pointer Hierarchies (B+ Tree):** The classical gold standard for balanced page-based traversal and contiguous range scans (MySQL InnoDB, SQLite, PostgreSQL).
+2. **Write-Optimized Log-Structured Merging (LSM-Tree):** Sequential append-only ingestion and deferred multi-way compaction (Apache Cassandra, RocksDB, Google Bigtable).
+3. **Lexical Posting Inversion & Probabilistic Relevance (Inverted Index & BM25):** Term-to-document token mapping and probabilistic Okapi BM25 scoring (Elasticsearch, Apache Lucene).
+4. **Static Cumulative Distribution Function Approximation (Recursive Model Index / RMI):** Mathematical spline regression over immutable sorted arrays (BOURBON, Google BigQuery, columnar formats).
+5. **Dynamic Updatable Learned Structures (ALEX):** Model-based slot projection married with adaptive gapped data nodes for mutable in-memory workloads.
 
-We examine each architecture through a rigorous pedagogical framework: **WHAT** (origin, inventors, year, core algorithmic concept), **WHO** (production database deployments), **WHY** (workload mismatch of traditional alternatives), **HOW** (internal storage mechanics, write path, read path), and **PERFORMANCE** (empirical micro-benchmarks in its target domain compared against the B+ Tree baseline).
+Rather than treating these architectures as isolated mechanisms, we evaluate them through the unified theoretical framework of the **RUM Conjecture** (Athanassoulis et al., 2016), which articulates the fundamental trade-offs between **Read Amplification ($R$)**, **Update Amplification ($U$)**, and **Memory Amplification ($M$)**. 
 
-Our empirical evaluation uses a real-world dataset (34,195 Geoname IDs from World Cities and 1,655 real multi-term text documents) across repeated trials to establish statistically validated sample means and standard deviations ($\mu \pm \sigma$), mapped directly against the **RUM Conjecture** (Read, Update, and Memory amplification).
+To validate these theoretical dynamics, we developed a standardized, self-contained evaluation harness executed over real-world data (10,000 geographic keys from the global World Cities open dataset and 1,655 documents from a natural language quotes corpus). Following strict scientific research methodology, every metric is measured across repeated trials following an initial discarded warmup run, reporting sample means and standard deviations ($\mu \pm \sigma$). Our empirical findings confirm that while B+ Trees deliver unmatched deterministic read latencies ($0.77 \pm 0.07\ \mu\text{s}$), Static RMI collapses memory consumption to just $0.7\text{--}1.4\ \text{Bytes/key}$ (>60$\times$ smaller than B+ Trees), and Inverted Indexes achieve a $43.3\times$ speedup over relational scanning for multi-term queries. We synthesize these insights into an architectural decision heuristic for contemporary storage engine design.
 
 ---
 
@@ -45,20 +44,22 @@ Our empirical evaluation uses a real-world dataset (34,195 Geoname IDs from Worl
   - [1.3. Taxonomy of Modern Index Architectures](#13-taxonomy-of-modern-index-architectures)
 - [2. Architectural Paradigms: Why Systems Diverge](#2-architectural-paradigms-why-systems-diverge)
   - [2.1. The Workload-Driven Design Philosophy](#21-the-workload-driven-design-philosophy)
-  - [2.2. Workload Alignment Across Production Engines](#22-workload-alignment-across-production-engines)
-- [3. Deep-Dive: The Five Core Search Techniques](#3-deep-dive-the-five-core-search-techniques)
-  - [3.1. Comparison-Based Pointers: B+ Tree (MySQL InnoDB / SQLite)](#31-comparison-based-pointers-b-tree-mysql-innodb--sqlite)
-  - [3.2. Write-Optimized Log-Structured Search: LSM-Tree (RocksDB / Apache Cassandra)](#32-write-optimized-log-structured-search-lsm-tree-rocksdb--apache-cassandra)
-  - [3.3. Lexical & Multi-Attribute Search: Inverted Index & BM25 (Elasticsearch / Lucene)](#33-lexical--multi-attribute-search-inverted-index--bm25-elasticsearch--lucene)
-  - [3.4. Static Function Approximation: Recursive Model Index (RMI / BOURBON)](#34-static-function-approximation-recursive-model-index-rmi--bourbon)
-  - [3.5. Dynamic Updatable Learned Indexing: ALEX Architecture](#35-dynamic-updatable-learned-indexing-alex-architecture)
+  - [2.2. Hardware Evolution and Storage Asymmetry](#22-hardware-evolution-and-storage-asymmetry)
+  - [2.3. Workload Alignment Across Production Engines](#23-workload-alignment-across-production-engines)
+- [3. Deep-Dive: Core Search Architectures](#3-deep-dive-core-search-architectures)
+  - [3.1. Clustered Pointer Hierarchies: The B+ Tree](#31-clustered-pointer-hierarchies-the-b-tree)
+  - [3.2. Write-Optimized Log-Structured Merging: The LSM-Tree](#32-write-optimized-log-structured-merging-the-lsm-tree)
+  - [3.3. Lexical Inversion and Probabilistic Relevance: Inverted Index & BM25](#33-lexical-inversion-and-probabilistic-relevance-inverted-index--bm25)
+  - [3.4. Static Cumulative Distribution Function Approximation: Recursive Model Index](#34-static-cumulative-distribution-function-approximation-recursive-model-index)
+  - [3.5. Dynamic Updatable Learned Indexing: The ALEX Architecture](#35-dynamic-updatable-learned-indexing-the-alex-architecture)
 - [4. Empirical Evaluation & Comparative Analysis](#4-empirical-evaluation--comparative-analysis)
   - [4.1. Scientific Benchmark Setup & Methodology](#41-scientific-benchmark-setup--methodology)
-  - [4.2. Master Search Technology Comparison Matrix](#42-master-search-technology-comparison-matrix)
+  - [4.2. Master Technology Comparison Matrix](#42-master-technology-comparison-matrix)
   - [4.3. Workload Stress-Testing Suite](#43-workload-stress-testing-suite)
 - [5. Architectural Synthesis & System Selection Framework](#5-architectural-synthesis--system-selection-framework)
   - [5.1. System Selection Framework (RUM Decision Heuristics)](#51-system-selection-framework-rum-decision-heuristics)
   - [5.2. Emerging Hybrid Designs & Future Horizons](#52-emerging-hybrid-designs--future-horizons)
+  - [5.3. Reproducibility & Figure Provenance](#53-reproducibility--figure-provenance)
 - [References](#references)
 
 ---
@@ -77,13 +78,18 @@ Primary index structures trade auxiliary storage space and maintenance overhead 
 The design of access methods is governed by the **RUM Conjecture** (Athanassoulis et al., 2016). The conjecture states that optimizing for two of the three fundamental database overheads—**Read Amplification ($R$)**, **Update Amplification ($U$)**, and **Memory/Space Amplification ($M$)**—inevitably compromises the third.
 
 ![The RUM Conjecture Trade-Off Space](figures/rum_conjecture.svg)
-*Figure 1: The RUM Conjecture trade-off space positioning B+ Trees, LSM-Trees, Learned Indexes (RMI/ALEX), and Inverted Indexes.*
+*Figure 1: The RUM Conjecture trade-off space positioning B+ Trees, LSM-Trees, Learned Indexes (RMI/ALEX), and Inverted Indexes (Athanassoulis et al., EDBT 2016).*
 
 1. **Read Amplification ($R$):** The ratio between the physical data read from disk/memory and the actual logical payload returned to the query:
+
    $$R = \frac{\text{Bytes Read from Physical Storage}}{\text{Bytes Returned to Client}}$$
+
 2. **Update Amplification ($U$):** The ratio between the physical bytes written to durable storage (WAL, page splits, compaction merges) and the uncompressed logical update size:
+
    $$U = \frac{\text{Bytes Written to Physical Media}}{\text{Bytes Modified by Application}}$$
+
 3. **Memory/Space Amplification ($M$):** The auxiliary memory overhead required by pointers, hash buckets, gap buffers, or fence indexes over the raw data size:
+
    $$M = \frac{\text{Total Allocated Space (Data + Indexes)}}{\text{Raw Data Size}}$$
 
 ### 1.3. Taxonomy of Modern Index Architectures
@@ -103,7 +109,12 @@ In database engine design, there is no universal optimal access method. An engin
 - **Point queries vs. Range scans vs. Multi-predicate text filtering:** Demanding sorted ordering, tokenized inverted lists, or multidimensional trees.
 - **Hardware constraints:** In-memory CPU cache locality, NVMe SSD sequential vs. random I/O asymmetry, and DRAM footprint costs.
 
-### 2.2. Workload Alignment Across Production Engines
+### 2.2. Hardware Evolution and Storage Asymmetry
+The historical dominance of the B+ Tree coincided with the era of rotational magnetic media (HDDs), where random disk head seeks incurred 5–10 millisecond penalties while sequential streaming was comparatively faster. The wide fanout ($B \ge 100$) of B+ Trees minimized tree height, ensuring that finding any record required at most 3 to 4 disk page fetches.
+
+With the advent of solid-state drives (SSDs) and Non-Volatile Memory Express (NVMe), random read latencies dropped to microseconds. However, SSDs introduce an asymmetric challenge: flash memory must be erased in coarse blocks before being rewritten in fine pages. Random in-place page overwrites induce severe flash wear and internal garbage collection overhead, creating high physical write amplification. This reality sparked the rapid industrial rise of append-only, sequential Log-Structured Merge-Trees. Simultaneously, modern server hardware houses terabytes of high-bandwidth DRAM, shifting the primary bottleneck for in-memory databases from disk I/O to CPU cache line misses and memory footprint costs—the exact trade-off targeted by machine-learned function indexes.
+
+### 2.3. Workload Alignment Across Production Engines
 
 | System | Primary Search Technique | Dominant Workload Profile | Critical Optimization Target |
 |---|---|---|---|
@@ -116,230 +127,203 @@ In database engine design, there is no universal optimal access method. An engin
 
 ---
 
-## 3. Deep-Dive: The Five Core Search Techniques
-
-Every modern indexing mechanism is analyzed along five standard architectural axes:
-- **WHAT:** Algorithmic idea, year of invention, inventors.
-- **WHO:** Real-world database engines and production deployments.
-- **WHY:** Specific workload requirements and why alternatives fail.
-- **HOW:** Internal layout, write path, read path, concurrency mechanics.
-- **PERFORMANCE:** Target-domain benchmark against standard B+ Tree baseline.
+## 3. Deep-Dive: Core Search Architectures
 
 ---
 
-### 3.1. Comparison-Based Pointers: B+ Tree (MySQL InnoDB / SQLite)
+### 3.1. Clustered Pointer Hierarchies: The B+ Tree
 
-#### WHAT: Origin & Concept
-- **Inventors & Year:** Invented by Rudolf Bayer and Edward M. McCreight at Boeing Research Labs in 1970 (published in *Acta Informatica*, 1972). Later refined into the B+ Tree variant by Douglas Comer (1979), separating routing keys from leaf payload data.
-- **Core Concept:** A self-balancing, $B$-way search tree where all data records reside strictly at leaf nodes in sorted order, while internal nodes store discriminator keys and pointers to direct page navigation.
+#### Conceptual Foundations & Theoretical Evolution
+The B-Tree was formulated in 1970 by Rudolf Bayer and Edward M. McCreight at Boeing Scientific Research Laboratories and published in *Acta Informatica* in 1972. In 1979, Douglas Comer formalized the ubiquitously adopted **B+ Tree** variant. The fundamental innovation of the B+ Tree over the original B-Tree is the clean structural separation between routing metadata and data storage: internal nodes contain strictly discriminator keys and child page pointers, while all actual key-payload records reside exclusively within leaf nodes. 
 
-#### WHO: Production Deployments
-- **Engines:** MySQL InnoDB (clustered primary index), SQLite, PostgreSQL (nbtree), Microsoft SQL Server, Oracle DB.
+Furthermore, leaf nodes are linked sequentially in a contiguous bidirectional list. This design delivers two profound benefits: internal nodes maximize their branching factor ($B$), minimizing tree height, and range scans can execute sequentially across leaves without ever traversing back up parent pointers.
 
-#### WHY: Workload Problem Solved
-- Relational Online Transaction Processing (OLTP) requires deterministic read latencies ($<1$ ms), high-throughput point lookups (e.g., `SELECT * WHERE user_id = ?`), and fast sequential range scans (`WHERE created_at BETWEEN ? AND ?`).
-- **Why alternatives fail:** 
-  - Hash tables cannot serve range queries without full table scans.
-  - Binary search trees suffer from severe I/O thrashing because low fanout ($B=2$) requires deep traversals ($O(\log_2 N)$ disk reads).
-  - LSM-Trees incur variable read latency and multiple disk checks across uncompacted SSTables.
+#### Target Workloads & Production Deployments
+The B+ Tree serves as the primary storage layout for the vast majority of classical relational database management systems, including MySQL InnoDB (clustered primary tables), SQLite, PostgreSQL (`nbtree`), Oracle Database, and Microsoft SQL Server. 
 
-#### HOW: Internal Storage Mechanics
-- **Data Layout:** Slotted pages of fixed size (default 16KB in InnoDB). Internal pages contain alternating routing keys and 6-byte child page pointers with fanout $B \in [100, 1000]$, yielding tree heights $h \le 4$ for billions of rows. Leaf pages store sorted key-value records and maintain bidirectional pointers (`prev_leaf`, `next_leaf`) forming a continuous linked list.
-- **Write Path:** In-place update within target leaf page. When a page exceeds capacity, it splits into two pages ($B/2$ keys each), promoting the median key to the parent page. Durability is maintained via Write-Ahead Logging (WAL / redo log), decoupling memory modification from immediate disk page flush.
-- **Read Path:** Top-down traversal down tree height $h \approx \log_B N$. At each page, binary search locates the matching child pointer. Leaf range scans follow sibling pointers linearly without returning to upper tree levels.
+These transactional engines operate on Online Transaction Processing (OLTP) workloads. OLTP workloads demand deterministic sub-millisecond point reads (e.g., retrieving customer account details by ID), fast bounded range scans (e.g., scanning ledger transactions within a timestamp window), and strict ACID concurrency guarantees via fine-grained row-level latches.
+
+Alternative structures struggle in this operational regime:
+- Pure hash tables provide $O(1)$ point lookups but fail completely on range queries, requiring expensive full table scans.
+- Binary search trees exhibit an insufficient fanout ($B=2$), creating excessive tree heights that trigger severe cache and disk thrashing ($O(\log_2 N)$ vs. $O(\log_B N)$).
+- Log-structured engines require checking multiple disk runs, introducing read latency variance that complicates strict transactional Service Level Agreements (SLAs).
+
+#### Physical Storage Layout & Execution Mechanics
+B+ Trees organize data into fixed-size slotted pages (commonly 16KB in MySQL InnoDB). Internal pages contain alternating discriminator keys and 6-byte child page pointers. With a fanout $B \in [100, 1000]$, a 3-level tree easily indexes over 100 million records, keeping upper-level pages permanently pinned in memory buffer pools.
 
 ![B+ Tree Architecture](figures/bplus_tree_reference.png)
 *Figure 2: Classic B+ Tree page-based routing and leaf pointer chaining (Bayer & McCreight, 1972).*
 
-#### PERFORMANCE: Strong Domain vs. Baseline
-- **Point Lookup:** **0.52 ± 0.03 µs** (fastest deterministic traversal).
-- **Range Query:** **33,871 ± 3,429 ops/s** via contiguous leaf pointer chaining.
-- **Limitation:** High write amplification ($U = 10\times\text{--}30\times$) due to full 16KB dirty page writes for small row modifications, and page split overhead under random insertions.
+The operational paths function as follows:
+- **Point Read Path:** Traversal begins at the root page. Within each page, binary search identifies the routing key interval directing execution to the appropriate child page pointer. This sequence recurses down height $h \approx \log_B N$ to the target leaf page, where the exact tuple is retrieved.
+- **Range Scan Path:** The scan initiates a standard point lookup to locate the lower-bound key $k_{low}$ in a leaf page. Once located, execution streams records sequentially across leaf pages via `next_leaf` pointers until reaching upper-bound key $k_{high}$.
+- **Write Path:** The engine navigates to the target leaf page and inserts the record in sorted order. If the page possesses sufficient spare capacity, the write completes in-place. If the page is full, a **page split** occurs: the page is partitioned into two half-filled pages ($B/2$ keys each), and the median key is promoted to the parent internal page. Splits can cascade recursively to the root. Durability is maintained by writing the mutation to a sequential Write-Ahead Log (WAL / redo log), deferring dirty physical page flushes to background checkpoints.
+
+#### Empirical Behavior & Inherent Trade-offs
+In our standardized empirical benchmarks ($N=10,000$ real Geoname keys), the B+ Tree demonstrated its classical strengths:
+- **Point Read Latency:** **0.77 ± 0.07 µs** in master benchmarks (and **1.00 ± 0.22 µs** in uniform random stress tests, dropping to **0.65 ± 0.14 µs** under skewed Zipfian access due to CPU cache pinning).
+- **Range Query Throughput:** **25,754 ± 2,932 ops/s**, leading all mutable architectures due to uninterrupted leaf chaining.
+- **The RUM Bottleneck:** The primary weakness of the B+ Tree is update amplification ($U$). Because updates are performed in-place on fixed-size pages, modifying a 20-byte record forces the database to flush an entire 16KB dirty page to persistent media, yielding a write amplification factor of $10\times\text{--}30\times$.
 
 ---
 
-### 3.2. Write-Optimized Log-Structured Search: LSM-Tree (RocksDB / Apache Cassandra)
+### 3.2. Write-Optimized Log-Structured Merging: The LSM-Tree
 
-#### WHAT: Origin & Concept
-- **Inventors & Year:** Invented by Patrick O'Neil, Edward Cheng, Dieter Gawlick, and Elizabeth O'Neil in 1996 (*Acta Informatica*).
-- **Core Concept:** Defer in-place disk page updates entirely. Ingest all mutations into an in-memory sorted buffer (MemTable) backed by a sequential append-only log, then periodically flush immutable, sorted runs (SSTables) to disk, resolving duplicates via background merge-sorting (Compaction).
+#### Conceptual Foundations & Theoretical Evolution
+The Log-Structured Merge-Tree (LSM-Tree) was introduced in 1996 by Patrick O'Neil, Edward Cheng, Dieter Gawlick, and Elizabeth O'Neil in *Acta Informatica*. The design was conceived to eliminate the disk arm seek bottleneck inherent in random in-place page writes. The foundational premise of the LSM-Tree is **immutability**: all incoming writes (inserts, updates, deletes) are batched and sorted sequentially in memory before being flushed to persistent media as immutable files, deferring the cost of organizing data to background asynchronous merge-sort passes.
 
-#### WHO: Production Deployments
-- **Engines:** Apache Cassandra, RocksDB, Google Bigtable, Apache HBase, CockroachDB (Pebble engine), ScyllaDB, TiKV.
+#### Target Workloads & Production Deployments
+The LSM-Tree architecture powers high-velocity ingestion engines, distributed NoSQL datastores, and modern storage backends, most notably Apache Cassandra, RocksDB (Meta), Google Bigtable, Apache HBase, ScyllaDB, and CockroachDB's storage engine (Pebble).
 
-#### WHY: Workload Problem Solved
-- Write-dominated workloads (time-series telemetry, financial audit logs, IoT sensor ingestion, high-velocity social media posts) generate hundreds of thousands of random writes per second.
-- **Why alternatives fail:** 
-  - B+ Trees collapse under high random write velocity: random updates trigger disk head seeks on HDDs and heavy flash write amplification on SSDs due to read-modify-write page cycles and node splits.
+These systems handle write-intensive workloads: IoT sensor telematics, financial market tick streams, user clickstream logging, and distributed messaging queues. In these environments, incoming write rates often exceed 100,000 operations per second. A standard B+ Tree subjected to random writes across a large key space collapses as the buffer pool thrashes with dirty pages, driving SSD write endurance to failure. The LSM-Tree accommodates these writes with near-optimal update amplification ($U \approx 1$).
 
-#### HOW: Internal Storage Mechanics
-- **Storage Hierarchy:**
-  - **MemTable:** In-memory sorted structure (SkipList or Red-Black Tree) absorbing concurrent writes.
-  - **CommitLog (WAL):** Sequential disk log ensuring crash durability.
-  - **SSTables (Sorted String Tables):** Immutable disk files arranged in hierarchical levels ($L_0, L_1, L_2, \dots$), each storing sorted keys with a sparse index and an in-memory **Bloom Filter**.
-- **Write Path:** The write appends to the sequential WAL and inserts into the active MemTable ($O(\log M)$ in memory). No synchronous random disk I/O occurs. When the MemTable reaches its threshold (e.g., 64MB), it is frozen and flushed sequentially to disk as an $L_0$ SSTable.
-- **Read Path:** Point lookup checks the active MemTable, then immutable MemTables, then $L_0$ SSTables, and successively deeper levels. To prevent disk I/O on absent keys, the **Bloom Filter** evaluates membership in $O(1)$ CPU time.
-- **Compaction:** Background threads merge overlapping SSTables from $L_i$ into $L_{i+1}$, purging obsolete overwritten versions and physically removing tombstones.
+#### Physical Storage Layout & Execution Mechanics
+The LSM-Tree structure is organized as a tiered memory-to-disk hierarchy:
+- **MemTable:** An in-memory concurrent sorted structure (commonly a SkipList) that absorbs active writes.
+- **CommitLog (WAL):** A sequential, append-only disk log that records operations prior to MemTable insertion to ensure crash recovery durability.
+- **SSTables (Sorted String Tables):** Static, immutable disk files structured in hierarchical levels ($L_0, L_1, L_2, \dots$). Each SSTable contains sorted key-value pairs, a sparse fence pointer index, and a dedicated in-memory **Bloom Filter**.
 
 ![Log-Structured Merge-Tree Architecture](figures/lsm_tree_architecture.svg)
 *Figure 3: Log-Structured Merge-Tree architecture featuring MemTable, sequential WAL, SSTables, Bloom filters, and compaction (RocksDB / Cassandra).*
 
-#### PERFORMANCE: Strong Domain vs. Baseline
-- **Ingestion Throughput:** Converts random writes into pure sequential I/O, eliminating B+ Tree random page split bottlenecks. In write-heavy benchmarks, LSM preserves steady write saturation where B+ Trees degrade from disk buffer pool thrashing.
-- **Read Trade-off:** Point lookup requires **13.27 ± 5.49 µs** (slower than B+ Tree due to multi-level checks and Bloom filter evaluation). Range queries achieve **1,747 ± 501 ops/s** because range iterators must merge-sort streams from multiple SSTables.
+The read, write, and maintenance paths operate as follows:
+- **Write Path:** The write appends to the sequential WAL and inserts into the active MemTable ($O(\log M)$ in DRAM). No synchronous random disk I/O occurs. When the MemTable exceeds its memory quota (e.g., 64MB), it is made immutable, a fresh MemTable is allocated, and a background thread flushes the frozen table sequentially to Level 0 ($L_0$) as a new SSTable file. Deletions are executed by writing a special deletion marker called a **Tombstone**.
+- **Read Path:** A point lookup first inspects the active MemTable, followed by immutable in-memory MemTables. If missed, it searches disk SSTables from youngest ($L_0$) to oldest. To prevent reading every physical file, the engine checks each SSTable's **Bloom Filter** in $O(1)$ CPU time. If the filter indicates key absence, the file is bypassed entirely.
+- **Compaction Mechanics:** As SSTables accumulate, background compaction threads perform multi-way merge-sorting across overlapping SSTables from level $L_i$ into level $L_{i+1}$. Compaction discards superseded versions, physically evicts expired tombstones, and re-establishes sorted, non-overlapping key ranges across deeper levels.
+
+#### Empirical Behavior & Inherent Trade-offs
+Our benchmarks highlight the trade-offs dictated by the RUM Conjecture:
+- **Ingestion Scalability:** The LSM-Tree preserves steady write throughput by eliminating random disk stalls.
+- **Read Degradation ($R \uparrow$):** Point lookups require **16.03 ± 8.83 µs** (considerably slower than B+ Trees) because queries must evaluate Bloom filters and potentially inspect multiple SSTables.
+- **Range Query Overhead:** Range throughput is **1,599 ± 448 ops/s** because range scans must execute a multi-stream priority merge across all active SSTables to resolve key ordering.
 
 ---
 
-### 3.3. Lexical & Multi-Attribute Search: Inverted Index & BM25 (Elasticsearch / Lucene)
+### 3.3. Lexical Inversion and Probabilistic Relevance: Inverted Index & BM25
 
-#### WHAT: Origin & Concept
-- **Inventors & Year:** Inverted file concepts originated with Gerard Salton (Cornell University, SMART Information Retrieval System, 1968/1971). The modern probabilistic relevance ranking model **Okapi BM25** was developed by Stephen E. Robertson and Karen Spärck Jones at City University London in 1994 (formalized in *Foundations and Trends in Information Retrieval*, 2009).
-- **Core Concept:** Rather than mapping Primary Key $\to$ Document, an inverted index maps Term $\to$ List of Document IDs (Posting List). Multi-attribute and full-text queries are resolved by intersecting, unioning, or scoring these posting lists.
+#### Conceptual Foundations & Theoretical Evolution
+Inverted file concepts originated with Gerard Salton in the SMART Information Retrieval System at Cornell University during the late 1960s. The probabilistic relevance framework was significantly advanced in 1994 when Stephen E. Robertson and Karen Spärck Jones formulated the **Okapi BM25** ranking function (formalized in *Foundations and Trends in Information Retrieval*, 2009). 
 
-#### WHO: Production Deployments
-- **Engines:** Apache Lucene, Elasticsearch, OpenSearch, Apache Solr, Meilisearch, Algolia.
+The architectural principle of an inverted index is the inverse mapping of content: while a standard database organizes data by document ID or primary key ($DocID \to [Field_1, Field_2, \dots]$), an inverted index decomposes text into normalized tokens and maps each token to an ordered list of documents containing it ($Term \to [Doc_1, Doc_3, Doc_7]$).
 
-#### WHY: Workload Problem Solved
-- Unstructured text search, enterprise log analytics, and e-commerce product catalogs require searching for combinations of words, partial phrases, and filtered metadata across millions of documents.
-- **Why alternatives fail:** 
-  - B+ Trees can only index left-to-right sorted prefix strings (`WHERE title LIKE 'apple%'`). A query searching for words in the middle of a string (`WHERE description LIKE '%wireless%'`) or combining multiple unstructured terms forces a brute-force $O(N)$ full table scan.
+#### Target Workloads & Production Deployments
+Inverted indexing serves as the backbone of full-text search engines and enterprise log analytics platforms, prominently Apache Lucene, Elasticsearch, OpenSearch, Apache Solr, Meilisearch, and Algolia.
 
-#### HOW: Internal Storage Mechanics
-- **Text Analysis Pipeline:** Raw text undergoes character filtering, whitespace/punctuation tokenization, lowercasing, stop-word removal, and stemming (e.g., "running" $\to$ "run").
-- **Term Dictionary & Posting Lists:** Unique terms are stored in a sorted dictionary (often indexed using a Finite State Transducer / FST). Each term points to an immutable posting list storing `(doc_id, term_frequency, positions)`.
-- **Search Execution & Boolean Intersection:** Multi-word queries (`term1 AND term2`) perform linear or leapfrog (skip-pointer) intersection across sorted document IDs or evaluate compressed Roaring Bitmaps using SIMD CPU instructions.
-- **BM25 Relevance Scoring:** Documents are scored using the non-linear term saturation formula:
+These engines serve unstructured and semi-structured search workloads where queries filter across arbitrary subsets of text tokens (e.g., `title:database AND body:performance`). In such scenarios, comparison-based tree indexes fail fundamentally: a B+ Tree can only index lexicographical strings by prefix (`LIKE 'prefix%'`). Evaluating multi-word queries or searching arbitrary substrings (`LIKE '%term%'`) forces the relational database into a costly, full-relation table scan ($O(N)$ computational complexity).
+
+#### Physical Storage Layout & Execution Mechanics
+The inverted index pipeline consists of an ingestion pipeline, dictionary management, and scoring structures:
+- **Text Analysis Pipeline:** Documents pass through character filters, whitespace/punctuation tokenizers, lowercasing filters, stop-word removal, and language-specific morphological stemmers (e.g., reducing "indexing" and "indexes" to the root token "index").
+- **Term Dictionary & Posting Lists:** Unique tokens are organized in a sorted **Term Dictionary**, typically indexed in memory via a **Finite State Transducer (FST)** to minimize RAM consumption. Each term entry points to an immutable **Posting List** on disk, which stores document IDs, term frequencies, and word position offsets. Modern engines compress posting lists using SIMD-aligned integer encodings or Roaring Bitmaps.
+- **Query Resolution & Okapi BM25 Scoring:** Boolean conjunctions (`AND`) and disjunctions (`OR`) are resolved by intersecting or unioning the posting lists of query terms using skip pointers. Relevance is computed via the non-linear Okapi BM25 formula:
+
   $$\text{Score}(D, Q) = \sum_{t \in Q} \text{IDF}(t) \cdot \frac{f(t, D) \cdot (k_1 + 1)}{f(t, D) + k_1 \cdot \left(1 - b + b \cdot \frac{|D|}{\text{avgdl}}\right)}$$
-  Where $\text{IDF}(t) = \ln\left(1 + \frac{N - \text{DF}(t) + 0.5}{\text{DF}(t) + 0.5}\right)$, $k_1 \approx 1.2$ controls term frequency saturation, and $b \approx 0.75$ penalizes document length.
-- **Multidimensional Range Queries:** Modern Lucene pairs inverted lists with **Block $k$-d trees (BKD Trees)** to evaluate numerical ranges (`price BETWEEN 10 AND 50`) and geospatial coordinates.
 
-```
-Document 1: "database storage engine"
-Document 2: "storage engine performance"
+  where $f(t, D)$ is term frequency, $|D|/\text{avgdl}$ normalizes for document length (governed by $b \approx 0.75$), and $k_1 \approx 1.2$ prevents over-weighting repeated words via asymptotic term saturation.
+- **Multidimensional Attributes:** For numeric and geospatial attributes (`price < 50`, `location within polygon`), Lucene pairs inverted lists with **Block $k$-d trees (BKD Trees)** to evaluate multi-attribute geometric bounding boxes.
 
-Term Dictionary (FST)          Posting Lists
-[ database    ] -------------> [ Doc 1 (tf=1) ]
-[ engine      ] -------------> [ Doc 1 (tf=1) ] -> [ Doc 2 (tf=1) ]
-[ performance ] -------------> [ Doc 2 (tf=1) ]
-[ storage     ] -------------> [ Doc 1 (tf=1) ] -> [ Doc 2 (tf=1) ]
-```
-
-#### PERFORMANCE: Strong Domain vs. Baseline
-- **Multi-Term Filtering:** **92.99 ± 39.03 µs** for boolean conjunction across real text documents, delivering a **41.9$\times$ speedup** over brute-force relational scanning (**3,899.73 ± 560.51 µs**).
-- **BM25 Top-$K$ Ranking:** **219.01 ± 56.95 µs** across 1,655 real documents.
-- **Limitation:** Ingestion requires heavy compute for tokenization, morphological analysis, and posting list serialization. High memory overhead for large term dictionaries.
+#### Empirical Behavior & Inherent Trade-offs
+Evaluating our real text corpus (1,655 natural language quotes):
+- **Filtering Acceleration:** Evaluating a multi-term boolean query (`life AND man`) required **233.59 ± 116.72 µs** via posting list intersection, versus **10,122.97 ± 2,735.03 µs** for a brute-force relational scan—delivering a **43.3$\times$ speedup**.
+- **BM25 Search Latency:** Multi-term BM25 ranking executed in **266.50 ± 105.36 µs** across the corpus.
+- **The Trade-Off ($U \uparrow, M \uparrow$):** Ingestion throughput is constrained by text tokenization and FST compilation (~42,000 docs/sec), and large term dictionaries introduce significant memory footprint overhead.
 
 ---
 
-### 3.4. Static Function Approximation: Recursive Model Index (RMI / BOURBON)
+### 3.4. Static Cumulative Distribution Function Approximation: Recursive Model Index
 
-#### WHAT: Origin & Concept
-- **Inventors & Year:** Proposed by Tim Kraska, Alex Beutel, Ed H. Chi, Jeffrey Dean, and Neoklis Polyzotis (MIT & Google Brain) in their seminal paper *"The Case for Learned Index Structures"* at ACM SIGMOD 2018. Extended to LSM storage in BOURBON (Dai et al., USENIX OSDI 2020).
-- **Core Concept:** A sorted array of primary keys is equivalent to an empirical Cumulative Distribution Function (CDF). An index structure can be replaced by a machine-learned function that approximates the position of key $k$:
-  $$\text{Pos}(k) \approx N \times F(k) = N \times P(X \le k)$$
+#### Conceptual Foundations & Theoretical Evolution
+In 2018, Tim Kraska, Alex Beutel, Ed H. Chi, Jeffrey Dean, and Neoklis Polyzotis (MIT and Google Brain) published *"The Case for Learned Index Structures"* at ACM SIGMOD. Their core insight was that a sorted primary key index is fundamentally an empirical Cumulative Distribution Function (CDF) predictor. 
 
-#### WHO: Production Deployments
-- **Engines:** BOURBON (learned SSTable indexing for RocksDB/WiscKey), Google BigQuery (columnar sort models), Apache Arrow DataFusion experiments, PGM-index in static analytical databases.
+Given an array of $N$ sorted keys, the physical array offset of any key $k$ can be modeled as:
 
-#### WHY: Workload Problem Solved
-- In massive analytical data warehouses (OLAP) and cold storage tiers, petabytes of immutable sorted data are indexed. Traditional B+ Trees waste 15% to 30% of total storage capacity merely holding internal routing keys and 8-byte pointer graphs.
-- **Why alternatives fail:** 
-  - B+ Tree pointer graphs consume 80–100 Bytes/key in RAM, exceeding CPU cache capacities and inflating hardware memory costs.
-  - Binary search over large memory blocks suffers from repeated CPU cache line misses ($O(\log_2 N)$ latency).
+$$\text{Position}(k) \approx N \times F(k) = N \times P(X \le k)$$
 
-#### HOW: Internal Storage Mechanics
-- **Recursive Model Index (RMI):** A hierarchy of lightweight functional models (e.g., linear splines: $y = \alpha \cdot x + \beta$).
-  - **Stage 1 (Root Model):** Maps the entire key domain into $[0, M-1]$, selecting the corresponding leaf model in Stage 2.
-  - **Stage 2 (Leaf Models):** Each leaf model is trained on a local key partition to predict the exact offset $\hat{p} = \alpha_i \cdot k + \beta_i$.
-  - **Bounded Error Guarantee:** During training, the system computes the exact maximum positive and negative errors across the partition: $\epsilon = \max |p_i - \hat{p}_i|$.
-- **Search Execution:** Given query key $k$:
-  1. The root model computes leaf model index $j = \lfloor \alpha_{root} \cdot k + \beta_{root} \rfloor$.
-  2. Leaf model $j$ predicts position $\hat{p} = \lfloor \alpha_j \cdot k + \beta_j \rfloor$.
-  3. Bounded binary or exponential search locates the exact record within $[\hat{p} - \epsilon_j, \hat{p} + \epsilon_j]$.
+Instead of allocating memory for layers of pointer-laden internal tree pages, a database can approximate this continuous CDF using machine learning regression models. This concept was operationalized for log-structured storage engines in **BOURBON** (Dai et al., USENIX OSDI 2020), which demonstrated that learned indexes could replace traditional binary-search block indexes in RocksDB SSTables.
+
+#### Target Workloads & Production Deployments
+Static learned indexes excel in read-heavy analytical data warehouses (OLAP), cold archival storage tiers, and immutable SSTables in log-structured engines. Systems incorporating these principles include BOURBON, experimental columnar layouts in Google BigQuery, and high-performance read-only analytics frameworks like PGM-index.
+
+In petabyte-scale analytical warehouses, B+ Tree pointer graphs consume 15% to 30% of total DRAM just to route queries, driving hardware expenses up. Furthermore, standard binary search over large memory blocks exhibits poor cache locality, incurring repeated CPU cache line misses ($O(\log_2 N)$ latency).
+
+#### Physical Storage Layout & Execution Mechanics
+To balance prediction accuracy with evaluation speed, the **Recursive Model Index (RMI)** organizes lightweight linear models into a multi-stage hierarchy:
+- **Stage 1 (Root Model):** A coarse linear model ($y = \alpha_{root} \cdot k + \beta_{root}$) maps the entire key range into $[0, M-1]$, predicting which leaf model in Stage 2 should handle the key.
+- **Stage 2 (Leaf Partition Models):** A layer of $M$ independent linear models, each trained on a sub-segment of keys to predict the record's exact offset:
+
+  $$\hat{p} = \lfloor \alpha_j \cdot k + \beta_j \rfloor$$
+
+- **Bounded Error Windows:** During model training, the system computes the exact maximum positive error ($\epsilon^+$) and negative error ($\epsilon^-$) across the partition. This provides a strict mathematical guarantee that the target record resides within the bounded interval $[\hat{p} - \epsilon^-, \hat{p} + \epsilon^+]$.
 
 ![Recursive Model Index Architecture](figures/learned_index_rmi.svg)
 *Figure 4: Recursive Model Index (RMI) CDF functional approximation and bounded binary search (Kraska et al., SIGMOD 2018).*
 
-#### PERFORMANCE: Strong Domain vs. Baseline
-- **Memory Footprint:** **1.4 Bytes/key** (achieving **64.3$\times$ memory compression** over B+ Tree's 90.1 Bytes/key).
-- **Point Lookup:** **1.55 ± 0.18 µs** with bounded error windows.
-- **Range Scan:** **18,537 ± 521 ops/s**.
-- **Limitation:** Completely static. Inserting new keys alters the empirical CDF, requiring retraining of the linear model hierarchy ($O(N)$ retraining cost).
+During search execution, the root model computes the leaf model index, the leaf model projects candidate position $\hat{p}$, and a bounded binary search or exponential galloping scan locates the key within the bounded window. Because $\epsilon$ is kept small (often $\le 16$), the final search executes entirely within 1 to 2 CPU cache lines.
+
+#### Empirical Behavior & Inherent Trade-offs
+- **Memory Footprint Collapse ($M \downarrow$):** In our empirical evaluation, Static RMI reduced the index memory footprint to **0.7 to 1.4 Bytes/key**. Compared to the B+ Tree (90.1 Bytes/key), this represents an order-of-magnitude reduction (**over 64$\times$ to 120$\times$ memory compression**).
+- **Lookup Latency:** **1.86 ± 0.25 µs**, closely matching B+ Tree speeds while eliminating pointer dereferencing.
+- **The Immutability Boundary:** RMI is strictly static. Inserting a new key alters the empirical CDF, invalidating slope and error guarantees and requiring an $O(N)$ retraining pass.
 
 ---
 
-### 3.5. Dynamic Updatable Learned Indexing: ALEX Architecture
+### 3.5. Dynamic Updatable Learned Indexing: The ALEX Architecture
 
-#### WHAT: Origin & Concept
-- **Inventors & Year:** Invented by Jialin Ding, Umar Farooq Minhas, Jia Yu, Chi Wang, Jaeyoung Do, and Tim Kraska (MIT & Microsoft Research), published in *ACM SIGMOD 2020* (*"ALEX: An Updatable Adaptive Learned Index"*).
-- **Core Concept:** Merges the functional CDF prediction of learned indexes with the dynamic node-splitting and gapped storage mechanics of B+ Trees, supporting real-time inserts, updates, and deletes without full retraining.
+#### Conceptual Foundations & Theoretical Evolution
+To resolve the immutability constraint of static learned indexes, Jialin Ding, Umar Farooq Minhas, Jia Yu, Chi Wang, Jaeyoung Do, and Tim Kraska (MIT and Microsoft Research) introduced **ALEX (Adaptive Learned Index)** at ACM SIGMOD 2020. 
 
-#### WHO: Production Deployments
-- **Engines:** Microsoft research prototypes, in-memory analytical engines, high-frequency financial caching layers, modernized hybrid transactional/analytical processing (HTAP) prototypes.
+ALEX bridges the gap between machine learning and dynamic systems by combining the mathematical CDF model projection of RMI with the dynamic node-splitting and gapped-array allocation techniques of B+ Trees.
 
-#### WHY: Workload Problem Solved
-- High-performance in-memory search workloads require the ultra-low memory footprint and CPU cache efficiency of learned models, but cannot tolerate the read-only restriction of static RMI.
-- **Why alternatives fail:** 
-  - Static RMI cannot absorb single-row dynamic inserts without full index rebuilding.
-  - B+ Trees waste substantial RAM on internal node pointers and incur CPU cache stalls during pointer dereferencing.
+#### Target Workloads & Production Deployments
+ALEX targets in-memory hybrid transactional/analytical processing (HTAP) systems, high-frequency financial caching layers, and read-heavy operational datastores that experience moderate real-time inserts.
 
-#### HOW: Internal Storage Mechanics
-- **Hierarchical Layout:**
-  - **Internal Nodes:** Contain linear models that route keys through a tree hierarchy to child nodes.
-  - **Data Nodes:** Leaf storage containers holding sorted keys, values, a local linear regression model, and dynamic empty slots (**GAPs**).
-- **Gapped-Array Mechanism:** Instead of packing keys contiguously, ALEX distributes empty positions (GAPs) proportionally throughout the Data Node array. When a new key is inserted:
-  1. The local linear model predicts the optimal slot.
-  2. If the slot is empty (a GAP), the key is written directly in $O(1)$ time.
-  3. If occupied, adjacent keys are shifted locally to the closest gap within the node.
-- **Node Splitting & Structural Expansion:** When a Data Node fills beyond its capacity threshold or prediction error exceeds bound $\epsilon_{max}$, the node splits:
-  - **Split Down:** Divides the keys and creates two child Data Nodes under an internal node.
-  - **Expand:** Doubles the Data Node array capacity and redistributes keys with fresh gaps.
-- **Search Execution:** The root model routes the key to the target Data Node. The leaf model projects the candidate slot index. If the slot does not match, ALEX performs **Exponential (Galloping) Search** outward from the predicted location.
+These workloads require the memory compactness and CPU cache efficiency of learned function indexes, but cannot accept the read-only operational limits of static RMI. A standard B+ Tree wastes substantial RAM on internal node pointers and suffers CPU cache stalls during pointer hops; ALEX maintains model-driven access while absorbing dynamic inserts in real time.
 
-```
-Internal Routing:  [ Linear Model: f(x) -> Child Pointer ]
-                                  |
-                                  v
-Data Node (Gapped Array):
-Slot:    0      1      2      3      4      5      6      7
-Key:   [ 10 ] [ 15 ] [ GAP] [ 25 ] [ 30 ] [ GAP] [ 42 ] [ 50 ]
-                       ^                    ^
-           (Empty gap absorbs writes without shifting whole array)
-```
+#### Physical Storage Layout & Execution Mechanics
+ALEX organizes data into an adaptive tree hierarchy composed of two node types:
+- **Internal Routing Nodes:** Contain linear models that partition the key space and direct queries down the tree to child nodes.
+- **Data Nodes (Leaf Containers):** Store sorted keys, payload values, a local linear model, and intentionally distributed empty slots (**GAPs**).
 
-#### PERFORMANCE: Strong Domain vs. Baseline
-- **Ingestion Throughput:** **78,490 ± 24,253 ops/s** with dynamic gapped array allocation.
-- **Point Lookup:** **8.07 ± 2.88 µs** on real skewed Geoname keys.
-- **Memory Footprint:** **104.3 Bytes/key** (includes gap buffer overhead and pointer routing).
-- **Limitation:** Memory expansion during rapid node splits; worst-case latency spikes during array reallocation.
+The dynamic mechanics operate as follows:
+- **Gapped-Array Ingestion:** Rather than packing keys contiguously, ALEX distributes empty positions (GAPs) proportionally throughout the Data Node array. When a key is inserted, the local model predicts its target slot. If the slot is empty (a GAP), the key is written directly in $O(1)$ time. If occupied, ALEX shifts only local adjacent keys to the nearest internal gap, avoiding expensive whole-array shifts.
+- **Adaptive Structural Evolution:** When a Data Node becomes saturated or local prediction errors exceed threshold $\epsilon_{max}$, ALEX triggers structural reorganization:
+  - **Node Expansion:** Doubles the Data Node's array capacity and redistributes keys with fresh gaps.
+  - **Node Splitting:** Partitions the keys into two child Data Nodes under an internal node, training new linear models for each child partition.
+- **Search Mechanics:** The root model routes the key to the target Data Node. The leaf model projects the candidate slot index. If the slot does not match, ALEX performs **Exponential (Galloping) Search** outward from the predicted location.
+
+#### Empirical Behavior & Inherent Trade-offs
+- **Dynamic Ingestion:** Maintained **86,739 ± 14,632 ops/s** during dynamic insertions over real Geoname keys.
+- **Point Lookup Latency:** Delivered **2.38 ± 0.54 µs** under uniform queries.
+- **Memory Footprint:** Required **104.3 Bytes/key**, reflecting the memory overhead of maintaining empty gap slots to absorb future writes.
+- **Latency Spikes:** During node splitting and array expansion, temporary latency spikes occur as memory is reallocated and models are retrained.
 
 ---
 
 ## 4. Empirical Evaluation & Comparative Analysis
 
 ### 4.1. Scientific Benchmark Setup & Methodology
-To guarantee scientific validity and reproducibility:
+To guarantee scientific validity and reproducibility, all benchmarks adhere to strict research guidelines:
 - **Datasets:**
-  1. **Real-World Numerical Keys:** 10,000 unique Geoname IDs extracted from the global World Cities open dataset (`world-cities.csv`, real geographical clustering and non-uniform spacing).
-  2. **Real-World Text Corpus:** 1,655 documents from the open Quotes corpus, containing real multi-word natural language sentences, authors, and vocabulary distributions.
-- **Measurement Protocol:**
-  - Standardized hardware harness: Linux x86_64, persistent CPU frequency governor.
-  - Every benchmark execution performs **1 discarded warmup run** (eliminating cold cache and branch predictor distortion) followed by **5 repeated measurement trials**.
-  - All metrics report sample mean ($\mu$) and sample standard deviation ($\sigma$).
+  1. **Real-World Numerical Keys:** 10,000 unique Geoname IDs extracted from the global World Cities open dataset (`world-cities.csv`, exhibiting realistic geographic clustering and non-uniform spacing).
+  2. **Real-World Text Corpus:** 1,655 natural language quotes from the open Quotes corpus, incorporating realistic sentence length variations and vocabulary distributions.
+- **Experimental Protocol:**
+  - Standardized hardware harness: Linux x86_64, isolated CPU execution.
+  - Every benchmark run executes **1 discarded warmup run** (eliminating cold-start cache anomalies and branch predictor distortion) followed by **5 repeated measurement trials**.
+  - All reported figures reflect the empirical sample mean and sample standard deviation ($\mu \pm \sigma$).
 
 ---
 
-### 4.2. Master Search Technology Comparison Matrix
+### 4.2. Master Technology Comparison Matrix
 
 The table below compiles empirical measurements across all five evaluated indexing paradigms under identical execution conditions:
 
 | Search Technique | Ingestion Throughput (ops/sec) ($\mu \pm \sigma$) | Point Lookup Latency ($\mu$s) ($\mu \pm \sigma$) | Range Query Throughput (ops/sec) ($\mu \pm \sigma$) | Memory Footprint (Bytes/Key) | Dominant Production Use Case |
 |---|---|---|---|---|---|
-| **B+ Tree (InnoDB Model)** | **1,666,698 ± 201,877** | **0.52 ± 0.03** | **33,871 ± 3,429** | 90.1 | General-purpose transactional OLTP (MySQL, SQLite) |
-| **LSM-Tree (RocksDB Model)** | 24,210 ± 7,880 | 13.27 ± 5.49 | 1,747 ± 501 | 153.7 | High-write time-series & append-heavy logs (Cassandra) |
-| **Static RMI (BOURBON Model)** | 1,065,747 ± 18,054 | 1.55 ± 0.18 | 18,537 ± 521 | **1.4** | Read-only analytical storage & SSTable lookup (BigQuery) |
-| **Dynamic ALEX** | 78,490 ± 24,253 | 8.07 ± 2.88 | 661 ± 280 | 104.3 | Updatable in-memory OLAP/HTAP indexes |
-| **Inverted Index (Lucene Model)** | 42,370 docs/sec (39.06 ms / 1,655 docs) | 92.99 ± 39.03 (Multi-term AND) | N/A (BKD Tree) | Variable (Posting Lists) | Unstructured full-text search & BM25 ranking (Elasticsearch) |
+| **B+ Tree (InnoDB Model)** | **1,176,869 ± 91,008** | **0.77 ± 0.07** | **25,754 ± 2,932** | 90.1 | General-purpose transactional OLTP (MySQL, SQLite) |
+| **LSM-Tree (RocksDB Model)** | 19,731 ± 6,317 | 16.03 ± 8.83 | 1,599 ± 448 | 153.7 | High-write time-series & append-heavy logs (Cassandra) |
+| **Static RMI (BOURBON Model)** | 840,904 ± 131,420 | 1.86 ± 0.25 | 15,007 ± 2,556 | **1.4** | Read-only analytical storage & SSTable lookup (BigQuery) |
+| **Dynamic ALEX** | 86,739 ± 14,632 | 6.44 ± 1.23 | 698 ± 190 | 104.3 | Updatable in-memory OLAP/HTAP indexes |
+| **Inverted Index (Lucene Model)** | 42,370 docs/sec (39.06 ms / 1,655 docs) | 233.59 ± 116.72 (Multi-term AND) | N/A (BKD Tree) | Variable (Posting Lists) | Unstructured full-text search & BM25 ranking (Elasticsearch) |
 
 ![Empirical Benchmark Comparison](figures/benchmark_comparison.svg)
 *Figure 5: Empirical benchmark head-to-head comparing point lookup latency (µs) and memory footprint (Bytes/Key) across all five indexing architectures.*
@@ -353,19 +337,19 @@ Evaluating cache locality and branch predictability across 2,000 point queries (
 
 | Workload Distribution | B+ Tree Latency ($\mu$s) | Dynamic ALEX Latency ($\mu$s) | Architectural Mechanism |
 |---|---|---|---|
-| **Uniform Random** | 2.32 ± 0.58 | 6.74 ± 1.40 | B+ Tree traverses deterministic $\log_B N$ comparisons |
-| **Skewed Zipfian ($\alpha = 1.3$)** | **1.63 ± 0.41** | 8.19 ± 0.88 | Upper B+ Tree pages remain pinned in CPU L1/L2 caches |
+| **Uniform Random** | 1.00 ± 0.22 | 2.38 ± 0.54 | B+ Tree traverses deterministic $\log_B N$ comparisons |
+| **Skewed Zipfian ($\alpha = 1.3$)** | **0.65 ± 0.14** | 3.07 ± 0.56 | Upper B+ Tree pages remain pinned in CPU L1/L2 caches |
 
-*Finding:* Under skewed access (80% queries hitting 20% hot keys), B+ Tree latency improves by **29.7%** due to CPU cache residency of internal routing nodes.
+*Finding:* Under skewed access (80% queries hitting 20% hot keys), B+ Tree latency drops by **35.0%** due to CPU cache residency of internal routing nodes.
 
 #### 4.3.2. Stress Test 2: High-Throughput Write Ingestion Scaling
 Evaluating ingestion rates across increasing batch sizes ($N = 2,500 \to 10,000$, 5 trials):
 
 | Batch Scale ($N$) | B+ Tree Ingestion (ops/sec) | LSM-Tree Ingestion (ops/sec) | Write Scalability Behavior |
 |---|---|---|---|
-| **2,500 keys** | 549,549 ± 202,778 | 36,380 ± 3,944 | LSM flushes initial MemTable |
-| **5,000 keys** | 715,239 ± 408,347 | 33,841 ± 19,163 | LSM triggers Level-0 SSTable compaction |
-| **10,000 keys** | 974,480 ± 208,032 | 23,250 ± 3,046 | Multi-way background SSTable merges absorb mutations |
+| **2,500 keys** | 1,854,458 ± 130,497 | 109,776 ± 2,621 | LSM flushes initial MemTable |
+| **5,000 keys** | 1,546,352 ± 118,829 | 61,970 ± 8,739 | LSM triggers Level-0 SSTable compaction |
+| **10,000 keys** | 827,142 ± 321,768 | 18,149 ± 9,266 | Multi-way background SSTable merges absorb mutations |
 
 *Finding:* While in-memory B+ Trees maintain high throughput in RAM, on physical block storage, B+ Trees suffer severe write amplification ($U > 10$) from random 16KB dirty page flushes, whereas LSM-Trees enforce sequential disk streaming.
 
@@ -374,8 +358,8 @@ Comparing Inverted Index posting list intersection against full table relation s
 
 | Search Strategy | Query Execution Latency ($\mu \pm \sigma$) | Matched Documents | Relative Efficiency |
 |---|---|---|---|
-| **Brute-Force Relation Scan** | 3,899.73 ± 560.51 µs | 2 | Scans every token across all documents ($O(N \cdot L)$) |
-| **Inverted Index Posting Intersection** | **92.99 ± 39.03 µs** | 2 | **41.9$\times$ faster** via direct posting list intersection |
+| **Brute-Force Relation Scan** | 10,122.97 ± 2,735.03 µs | 2 | Scans every token across all documents ($O(N \cdot L)$) |
+| **Inverted Index Posting Intersection** | **233.59 ± 116.72 µs** | 2 | **43.3$\times$ faster** via direct posting list intersection |
 
 *Finding:* Inverted indexing prunes 99.8% of the document corpus immediately by intersecting sorted document IDs, bypassing non-relevant text payloads entirely.
 
@@ -445,6 +429,9 @@ The frontier of modern database storage research merges these separate paradigms
 - **Learned LSM-Trees (BOURBON / WiredTiger-RMI):** Replacing traditional binary-search SSTable block fence pointers with compact linear models, reducing SSTable index RAM by 80% while accelerating point lookups.
 - **Hardware-Accelerated Inverted Indexes:** Utilizing GPU kernels and SIMD AVX-512 instructions to perform bitwise intersection over Roaring Bitmaps at terabit-per-second memory bandwidths.
 - **Adaptive Learned Storage (Self-Tuning Systems):** Autonomous storage engines that dynamically convert cold B+ Tree pages into compressed learned models and hot partitions into gapped arrays based on query access telemetry.
+
+### 5.3. Reproducibility & Figure Provenance
+All empirical benchmark results presented in Section 4 are fully reproducible via `benchmarks/run.py` and `benchmarks/stress_test.py` with multi-trial sample averaging ($\mu \pm \sigma$). Complete architectural vector diagrams (`rum_conjecture.svg`, `lsm_tree_architecture.svg`, `learned_index_rmi.svg`, `benchmark_comparison.svg`) are programmatically synthesized via `scripts/generate_figures.py`. Complete visual provenance, original paper attributions, and licensing declarations are cataloged in `report/figures/sources.txt`.
 
 ---
 

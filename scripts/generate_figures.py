@@ -342,25 +342,25 @@ def generate_benchmark_comparison_svg():
     <text x="165" y="48" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">(Lower is Better)</text>
 
     <!-- Bars -->
-    <!-- B+ Tree: 0.52 µs -->
+    <!-- B+ Tree: 0.77 µs -->
     <text x="30" y="100" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">B+ Tree</text>
     <rect x="110" y="85" width="25" height="24" rx="4" fill="#38bdf8" />
-    <text x="145" y="102" font-family="sans-serif" font-size="11" font-weight="700" fill="#38bdf8">0.52 µs</text>
+    <text x="145" y="102" font-family="sans-serif" font-size="11" font-weight="700" fill="#38bdf8">0.77 µs</text>
 
-    <!-- Static RMI: 1.26 µs -->
+    <!-- Static RMI: 1.86 µs -->
     <text x="30" y="160" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Static RMI</text>
     <rect x="110" y="145" width="45" height="24" rx="4" fill="#a855f7" />
-    <text x="165" y="162" font-family="sans-serif" font-size="11" font-weight="700" fill="#c084fc">1.26 µs</text>
+    <text x="165" y="162" font-family="sans-serif" font-size="11" font-weight="700" fill="#c084fc">1.86 µs</text>
 
-    <!-- Dynamic ALEX: 5.85 µs -->
+    <!-- Dynamic ALEX: 6.44 µs -->
     <text x="30" y="220" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Dynamic ALEX</text>
-    <rect x="110" y="205" width="95" height="24" rx="4" fill="#10b981" />
-    <text x="215" y="222" font-family="sans-serif" font-size="11" font-weight="700" fill="#34d399">5.85 µs</text>
+    <rect x="110" y="205" width="105" height="24" rx="4" fill="#10b981" />
+    <text x="225" y="222" font-family="sans-serif" font-size="11" font-weight="700" fill="#34d399">6.44 µs</text>
 
-    <!-- LSM-Tree: 11.66 µs -->
+    <!-- LSM-Tree: 16.03 µs -->
     <text x="30" y="280" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">LSM-Tree</text>
-    <rect x="110" y="265" width="165" height="24" rx="4" fill="#f43f5e" />
-    <text x="285" y="282" font-family="sans-serif" font-size="11" font-weight="700" fill="#f43f5e">11.66 µs</text>
+    <rect x="110" y="265" width="190" height="24" rx="4" fill="#f43f5e" />
+    <text x="308" y="282" font-family="sans-serif" font-size="10" font-weight="700" fill="#f43f5e">16.03 µs</text>
 
     <text x="165" y="345" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">B+ Tree deterministic pointers deliver lowest</text>
     <text x="165" y="362" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">point read latency via memory cache pinning.</text>

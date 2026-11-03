@@ -13,7 +13,6 @@ venv/
 ENV/
 
 # Output & benchmark artifacts
-benchmarks/results/
-*.png
 *.csv
 .DS_Store
+!report/figures/*.png

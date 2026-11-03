@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 560" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgChart" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+  </defs>
+
+  <rect width="850" height="560" fill="url(#bgChart)" rx="14" />
+  <text x="425" y="38" font-family="sans-serif" font-size="20" font-weight="700" fill="#f8fafc" text-anchor="middle">Empirical Benchmark Head-to-Head (N=10,000 Real Keys)</text>
+  <text x="425" y="60" font-family="sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">Comparison of Point Lookup Latency (µs, lower is better) vs. Memory Footprint (Bytes/Key, lower is better)</text>
+
+  <!-- Left Chart: Point Lookup Latency (µs) -->
+  <g transform="translate(60, 100)">
+    <rect width="330" height="380" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
+    <text x="165" y="30" font-family="sans-serif" font-size="14" font-weight="700" fill="#38bdf8" text-anchor="middle">POINT LOOKUP LATENCY (µs)</text>
+    <text x="165" y="48" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">(Lower is Better)</text>
+
+    <!-- Bars -->
+    <!-- B+ Tree: 0.52 µs -->
+    <text x="30" y="100" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">B+ Tree</text>
+    <rect x="110" y="85" width="25" height="24" rx="4" fill="#38bdf8" />
+    <text x="145" y="102" font-family="sans-serif" font-size="11" font-weight="700" fill="#38bdf8">0.52 µs</text>
+
+    <!-- Static RMI: 1.26 µs -->
+    <text x="30" y="160" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Static RMI</text>
+    <rect x="110" y="145" width="45" height="24" rx="4" fill="#a855f7" />
+    <text x="165" y="162" font-family="sans-serif" font-size="11" font-weight="700" fill="#c084fc">1.26 µs</text>
+
+    <!-- Dynamic ALEX: 5.85 µs -->
+    <text x="30" y="220" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Dynamic ALEX</text>
+    <rect x="110" y="205" width="95" height="24" rx="4" fill="#10b981" />
+    <text x="215" y="222" font-family="sans-serif" font-size="11" font-weight="700" fill="#34d399">5.85 µs</text>
+
+    <!-- LSM-Tree: 11.66 µs -->
+    <text x="30" y="280" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">LSM-Tree</text>
+    <rect x="110" y="265" width="165" height="24" rx="4" fill="#f43f5e" />
+    <text x="285" y="282" font-family="sans-serif" font-size="11" font-weight="700" fill="#f43f5e">11.66 µs</text>
+
+    <text x="165" y="345" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">B+ Tree deterministic pointers deliver lowest</text>
+    <text x="165" y="362" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">point read latency via memory cache pinning.</text>
+  </g>
+
+  <!-- Right Chart: Memory Footprint (Bytes/Key) -->
+  <g transform="translate(460, 100)">
+    <rect width="330" height="380" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
+    <text x="165" y="30" font-family="sans-serif" font-size="14" font-weight="700" fill="#a855f7" text-anchor="middle">INDEX MEMORY FOOTPRINT (B/Key)</text>
+    <text x="165" y="48" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">(Lower is Better)</text>
+
+    <!-- Bars -->
+    <!-- Static RMI: 1.4 B/key -->
+    <text x="30" y="100" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Static RMI</text>
+    <rect x="110" y="85" width="10" height="24" rx="4" fill="#a855f7" />
+    <text x="130" y="102" font-family="sans-serif" font-size="11" font-weight="700" fill="#c084fc">1.4 B/key (&gt;64x compression)</text>
+
+    <!-- B+ Tree: 90.1 B/key -->
+    <text x="30" y="160" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">B+ Tree</text>
+    <rect x="110" y="145" width="135" height="24" rx="4" fill="#38bdf8" />
+    <text x="255" y="162" font-family="sans-serif" font-size="11" font-weight="700" fill="#38bdf8">90.1 B/key</text>
+
+    <!-- Dynamic ALEX: 104.3 B/key -->
+    <text x="30" y="220" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Dynamic ALEX</text>
+    <rect x="110" y="205" width="150" height="24" rx="4" fill="#10b981" />
+    <text x="270" y="222" font-family="sans-serif" font-size="11" font-weight="700" fill="#34d399">104.3 B/key</text>
+
+    <!-- LSM-Tree: 153.7 B/key -->
+    <text x="30" y="280" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">LSM-Tree</text>
+    <rect x="110" y="265" width="195" height="24" rx="4" fill="#f43f5e" />
+    <text x="165" y="315" font-family="sans-serif" font-size="11" font-weight="700" fill="#f43f5e">153.7 B/key (Bloom filters + SSTables)</text>
+
+    <text x="165" y="345" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">Static RMI eliminates child node pointers,</text>
+    <text x="165" y="362" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">compressing index footprint down to ~1 Byte/key.</text>
+  </g>
+</svg>

@@ -31,24 +31,36 @@ class BaseIndex(Protocol):
 
 
 def estimate_object_memory(obj: Any, seen: set[int] | None = None) -> int:
-    """Recursive approximation of total memory bytes held by a Python object.
+    """Iterative approximation of total memory bytes held by an object graph.
     
-    ponytail: Deep Python object inspection over OS-level page allocator stats; upgrade when measuring C/Rust storage backends.
+    ponytail: Iterative object traversal over OS-level page allocator stats; upgrade when measuring C/Rust storage backends.
     """
     if seen is None:
         seen = set()
-    obj_id = id(obj)
-    if obj_id in seen:
-        return 0
-    seen.add(obj_id)
 
-    size = sys.getsizeof(obj)
-    if isinstance(obj, dict):
-        size += sum(estimate_object_memory(k, seen) + estimate_object_memory(v, seen) for k, v in obj.items())
-    elif isinstance(obj, (list, tuple, set, frozenset)):
-        size += sum(estimate_object_memory(item, seen) for item in obj)
-    elif hasattr(obj, "__dict__"):
-        size += estimate_object_memory(vars(obj), seen)
-    elif hasattr(obj, "__slots__"):
-        size += sum(estimate_object_memory(getattr(obj, s), seen) for s in obj.__slots__ if hasattr(obj, s))
-    return size
+    total_size = 0
+    stack = [obj]
+
+    while stack:
+        curr = stack.pop()
+        curr_id = id(curr)
+        if curr_id in seen:
+            continue
+        seen.add(curr_id)
+
+        total_size += sys.getsizeof(curr)
+
+        if isinstance(curr, dict):
+            for k, v in curr.items():
+                stack.append(k)
+                stack.append(v)
+        elif isinstance(curr, (list, tuple, set, frozenset)):
+            stack.extend(curr)
+        elif hasattr(curr, "__dict__"):
+            stack.append(vars(curr))
+        elif hasattr(curr, "__slots__"):
+            for s in curr.__slots__:
+                if hasattr(curr, s):
+                    stack.append(getattr(curr, s))
+
+    return total_size

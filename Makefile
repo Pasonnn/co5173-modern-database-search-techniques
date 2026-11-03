@@ -18,6 +18,9 @@ bench:
 stress:
 	$(PYTHON) benchmarks/stress_test.py
 
+figures:
+	$(PYTHON) scripts/generate_figures.py
+
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.py[cod]" -delete

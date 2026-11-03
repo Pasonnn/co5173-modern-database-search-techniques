@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 560" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <rect width="850" height="560" fill="url(#bg)" rx="14" />
+  <text x="425" y="38" font-family="sans-serif" font-size="20" font-weight="700" fill="#f9fafb" text-anchor="middle">Log-Structured Merge-Tree (LSM) Architecture</text>
+  <text x="425" y="60" font-family="sans-serif" font-size="12" fill="#9ca3af" text-anchor="middle">Sequential Append Ingestion, In-Memory MemTable, and Multi-Level Merging (RocksDB / Cassandra)</text>
+
+  <!-- Client Mutation -->
+  <rect x="40" y="100" width="140" height="50" rx="8" fill="#1f2937" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <text x="110" y="125" font-family="sans-serif" font-size="13" font-weight="700" fill="#60a5fa" text-anchor="middle">Client Writes</text>
+  <text x="110" y="140" font-family="sans-serif" font-size="10" fill="#9ca3af" text-anchor="middle">PUT(key, val) / DEL</text>
+
+  <!-- Write Split Arrows -->
+  <path d="M 180 120 L 250 120 L 250 100 L 290 100" fill="none" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)" />
+  <path d="M 180 130 L 250 130 L 250 160 L 290 160" fill="none" stroke="#f43f5e" stroke-width="2" />
+
+  <!-- WAL Log -->
+  <rect x="290" y="75" width="220" height="44" rx="6" fill="#1e293b" stroke="#f43f5e" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="400" y="97" font-family="sans-serif" font-size="12" font-weight="700" fill="#f43f5e" text-anchor="middle">WAL (CommitLog on Disk)</text>
+  <text x="400" y="112" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Sequential Append-Only Durability</text>
+
+  <!-- MemTable (RAM) -->
+  <rect x="290" y="140" width="220" height="65" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="2" filter="url(#sh)"/>
+  <text x="400" y="165" font-family="sans-serif" font-size="13" font-weight="700" fill="#38bdf8" text-anchor="middle">MemTable (RAM SkipList)</text>
+  <text x="400" y="182" font-family="sans-serif" font-size="10" fill="#cbd5e1" text-anchor="middle">Absorbs Concurrent Mutations ($O(\log M)$)</text>
+  <text x="400" y="196" font-family="sans-serif" font-size="9" fill="#10b981" text-anchor="middle">Zero Random Disk Head Seeks</text>
+
+  <!-- Flush Arrow -->
+  <path d="M 400 205 L 400 250" fill="none" stroke="#10b981" stroke-width="2" stroke-dasharray="4,4" />
+  <text x="450" y="232" font-family="sans-serif" font-size="11" font-weight="600" fill="#34d399">Flush (Threshold)</text>
+
+  <!-- Disk SSTable Levels Container -->
+  <rect x="40" y="260" width="770" height="260" rx="10" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+  <text x="60" y="285" font-family="sans-serif" font-size="13" font-weight="700" fill="#94a3b8">PERSISTENT DURABLE STORAGE: SSTABLE RUNS</text>
+
+  <!-- Level 0 -->
+  <text x="60" y="325" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Level 0:</text>
+  <text x="60" y="340" font-family="sans-serif" font-size="10" fill="#64748b">(Overlapping)</text>
+
+  <!-- SSTable 1 -->
+  <g transform="translate(150, 305)">
+    <rect width="180" height="50" rx="5" fill="#1e293b" stroke="#38bdf8" stroke-width="1" />
+    <text x="90" y="22" font-family="sans-serif" font-size="11" font-weight="700" fill="#f8fafc" text-anchor="middle">SSTable 0-1 (Keys: 10-900)</text>
+    <text x="90" y="40" font-family="sans-serif" font-size="9" fill="#fbbf24" text-anchor="middle">Bloom Filter + Fence Index</text>
+  </g>
+
+  <!-- SSTable 2 -->
+  <g transform="translate(350, 305)">
+    <rect width="180" height="50" rx="5" fill="#1e293b" stroke="#38bdf8" stroke-width="1" />
+    <text x="90" y="22" font-family="sans-serif" font-size="11" font-weight="700" fill="#f8fafc" text-anchor="middle">SSTable 0-2 (Keys: 50-850)</text>
+    <text x="90" y="40" font-family="sans-serif" font-size="9" fill="#fbbf24" text-anchor="middle">Bloom Filter + Fence Index</text>
+  </g>
+
+  <!-- Compaction Arrow -->
+  <path d="M 400 365 L 400 405" fill="none" stroke="#f43f5e" stroke-width="2" />
+  <text x="475" y="390" font-family="sans-serif" font-size="11" font-weight="700" fill="#f43f5e">Background Compaction (Merge-Sort)</text>
+
+  <!-- Level 1 -->
+  <text x="60" y="445" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Level 1:</text>
+  <text x="60" y="460" font-family="sans-serif" font-size="10" fill="#64748b">(Partitioned)</text>
+
+  <g transform="translate(150, 425)">
+    <rect width="180" height="50" rx="5" fill="#1e293b" stroke="#10b981" stroke-width="1" />
+    <text x="90" y="22" font-family="sans-serif" font-size="11" font-weight="700" fill="#f8fafc" text-anchor="middle">SSTable 1-A [10-350]</text>
+    <text x="90" y="40" font-family="sans-serif" font-size="9" fill="#34d399" text-anchor="middle">Purged Overwritten Keys</text>
+  </g>
+  <g transform="translate(350, 425)">
+    <rect width="180" height="50" rx="5" fill="#1e293b" stroke="#10b981" stroke-width="1" />
+    <text x="90" y="22" font-family="sans-serif" font-size="11" font-weight="700" fill="#f8fafc" text-anchor="middle">SSTable 1-B [351-700]</text>
+    <text x="90" y="40" font-family="sans-serif" font-size="9" fill="#34d399" text-anchor="middle">Tombstones Removed</text>
+  </g>
+  <g transform="translate(550, 425)">
+    <rect width="180" height="50" rx="5" fill="#1e293b" stroke="#10b981" stroke-width="1" />
+    <text x="90" y="22" font-family="sans-serif" font-size="11" font-weight="700" fill="#f8fafc" text-anchor="middle">SSTable 1-C [701-999]</text>
+    <text x="90" y="40" font-family="sans-serif" font-size="9" fill="#34d399" text-anchor="middle">Compacted Non-Overlapping</text>
+  </g>
+
+  <!-- Point Read Query Flow -->
+  <rect x="580" y="100" width="230" height="105" rx="8" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="695" y="125" font-family="sans-serif" font-size="12" font-weight="700" fill="#a5b4fc" text-anchor="middle">READ PATH ORDER</text>
+  <text x="695" y="145" font-family="sans-serif" font-size="10" fill="#e0e7ff" text-anchor="middle">1. Search Active MemTable</text>
+  <text x="695" y="162" font-family="sans-serif" font-size="10" fill="#e0e7ff" text-anchor="middle">2. Check In-Memory Bloom Filter</text>
+  <text x="695" y="179" font-family="sans-serif" font-size="10" fill="#e0e7ff" text-anchor="middle">3. Inspect L0 -> L1 -> L2 SSTables</text>
+  <text x="695" y="196" font-family="sans-serif" font-size="9" fill="#fbbf24" text-anchor="middle">Bloom filter prunes 99% negative reads</text>
+</svg>

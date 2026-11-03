@@ -1,0 +1,22 @@
+=========================================================================================================
+CO5173 EMPIRICAL BENCHMARK: 5 REPEATED TRIALS (N=10,000 Real-World Geoname Keys)
+=========================================================================================================
+Running B+ Tree (1 warmup + 5 measurement trials)...
+Running LSM-Tree (1 warmup + 5 measurement trials)...
+Running Static RMI (1 warmup + 5 measurement trials)...
+Running Dynamic ALEX (1 warmup + 5 measurement trials)...
+
+=========================================================================================================
+Engine         | Ingest (ops/s) (µ ± σ)     | Lookup (µs) (µ ± σ)      | Range (ops/s) (µ ± σ)  | Bytes/Key 
+---------------------------------------------------------------------------------------------------------
+B+ Tree        |    1176869 ± 91008         |     0.77 ± 0.07          |    25754 ± 2932        |      90.1
+LSM-Tree       |      19731 ± 6317          |    16.03 ± 8.83          |     1599 ± 448         |     153.7
+Static RMI     |     840904 ± 131420        |     1.86 ± 0.25          |    15007 ± 2556        |       1.4
+Dynamic ALEX   |      86739 ± 14632         |     6.44 ± 1.23          |      698 ± 190         |     104.3
+=========================================================================================================
+
+--- Lexical Inverted Index on Real Text Corpus (BM25 + Boolean Search) ---
+Indexed 1,655 real documents in 58.86 ms
+BM25 Top Match: Doc ID 131 (Score: 11.425)
+BM25 Search Latency (5 runs): 266.50 ± 105.36 µs
+Boolean AND ['life', 'time'] matched 2 documents: [196, 298]

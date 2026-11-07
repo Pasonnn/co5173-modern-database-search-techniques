@@ -1,82 +1,81 @@
 # Course: Data Engineering (CO5173) - HCMUT
-## Project Report Outline: Search Techniques in Modern Database Systems
+## Project Report Outline: Specialized Modern Database Search Engines — Apache Cassandra (LSM) vs. Elasticsearch (Inverted Index)
 
 **Instructor:** Assoc. Prof. Tran Minh Quang  
 **Students:**  
-- Nguyen Dinh Hoang Son (Student ID: 2670362)  
-- Nguyen Doan Phuc An (Student ID: 2670249)  
+- Nguyen Dinh Hoang Son (Student ID: `2670362`)  
+- Nguyen Doan Phuc An (Student ID: `2670249`)  
 **Location & Date:** Ho Chi Minh City – 2026  
+**Repository:** [https://github.com/Pasonnn/co5173-modern-database-search-techniques](https://github.com/Pasonnn/co5173-modern-database-search-techniques)
 
 ---
 
-### 1. Introduction to Database Indexing & Search Mechanics
-- **1.1. The Fundamental Search Problem:**
-  - Point lookups, range scans, and full-text retrieval ($O(N)$ scans vs. $O(\log N)$ tree traversals vs. $O(1)$ function mappings).
-- **1.2. The Storage Engine Trade-off Space:**
-  - The RUM Conjecture (Read, Update, and Memory/Space Amplification) across relational, distributed, and analytical databases.
-- **1.3. Taxonomy of Modern Index Architectures:**
-  - Comparison-based trees, log-structured engines, lexical inverted indexes, and learned function approximations.
+### 1. Introduction & Theoretical Foundation
+- **1.1. The Divergence of Modern Database Search:**
+  - Why traditional relational indexing (B+ Tree) cannot simultaneously serve high-throughput ingestion and unstructured lexical retrieval.
+- **1.2. The RUM Conjecture (Athanassoulis et al., EDBT 2016):**
+  - Formalizing the trilemma: Read Amplification ($R$), Update Amplification ($U$), and Memory/Storage Amplification ($M$).
+  - Mapping Cassandra (optimizing $U$) vs. Elasticsearch (optimizing $R$ for arbitrary text predicates).
+- **1.3. Scope & Objectives:**
+  - In-depth architectural deconstruction, mathematical modeling, and empirical benchmarking of Apache Cassandra (LSM-Tree) and Elasticsearch (Inverted Index).
 
 ---
 
-### 2. Architectural Paradigms: Why Systems Diverge
-- **2.1. The Workload-Driven Design Philosophy:**
-  - Why a one-size-fits-all index does not exist in production database design.
-- **2.2. Workload Alignment Across Production Engines:**
-  - **2.2.1.** High-concurrency sequential ingestion (Apache Cassandra / RocksDB).
-  - **2.2.2.** High-dimensional unstructured text & log search (Elasticsearch / Lucene).
-  - **2.2.3.** ACID point-and-range transactional workloads (MySQL InnoDB).
-  - **2.2.4.** In-memory cache-conscious analytical acceleration (Learned Models).
+### 2. High-Throughput Write-Optimized Search: Apache Cassandra (LSM-Tree)
+- **2.1. Workload Target & Architectural Rationale:**
+  - Write-intensive ingestion, append-heavy time-series, sensor telemetry, and partitioned key-value lookups.
+- **2.2. The Storage Hierarchy:**
+  - **CommitLog:** Sequential disk Write-Ahead Logging (WAL) for durability without random I/O.
+  - **MemTable:** Concurrent in-memory sorted structure (SkipList) supporting $O(\log N)$ point writes in RAM.
+  - **Immutable SSTables (Sorted String Tables):** Flushed immutable runs composed of Data Files, Primary Fence Index, and Summary blocks.
+- **2.3. Read Path Mechanics & Pruning:**
+  - Hierarchical read path: Active MemTable $\rightarrow$ In-memory Bloom Filter $\rightarrow$ Sparse Fence Pointers $\rightarrow$ Targeted SSTable Data Block.
+  - Bloom Filter double-hashing (Kirsch-Mitzenmacher optimization) to eliminate unnecessary disk seeks on absent keys.
+- **2.4. Mutation Lifecycle & Compaction:**
+  - Deletion mechanics via Tombstones and TTL markers.
+  - Asynchronous multi-way merge compaction: Size-Tiered Compaction Strategy (STCS) vs. Leveled Compaction Strategy (LCS).
+  - Theoretical bounds on Read Amplification ($R$) vs. Write Amplification ($W$).
 
 ---
 
-### 3. Core Search Techniques & Production Case Studies
-- **3.1. Comparison-Based Pointers: B+ Tree Architecture**
-  - Case Study: MySQL InnoDB Storage Engine.
-  - Storage Layout: Branching factor (fanout), page boundaries (16KB), key-pointer serialization.
-  - Search & Range Mechanics: Hierarchical pointer traversal down height $h$, sibling leaf chaining, CPU cache misses.
-  - Write Path: In-place page updates, page splits/merges, Write-Ahead Logging (WAL).
-  - Trade-off Profile: Predictable $O(\log N)$ latency vs. high write amplification and pointer memory overhead.
-- **3.2. Write-Optimized Log-Structured Search: LSM-Tree Architecture**
-  - Case Study: Apache Cassandra & RocksDB.
-  - Storage Hierarchy: MemTable (SkipList), sequential CommitLog, immutable SSTables.
-  - Read & Search Mechanics: Bloom Filter fast-fail ($O(1)$), SSTable sparse index & block traversal.
-  - Write & Maintenance: Sequential appends, background multi-way merging (Size-Tiered vs. Leveled), tombstone lifecycle.
-  - Trade-off Profile: High ingestion throughput vs. read amplification and compaction I/O spikes.
-- **3.3. Lexical & Multi-Attribute Search: Inverted Index & BKD Trees**
-  - Case Study: Elasticsearch & Apache Lucene.
-  - Text Analysis & Layout: Tokenization, Term Dictionary (FSTs), ordered Posting Lists.
-  - Search Execution: Boolean operations (AND/OR), BM25 relevance scoring.
-  - Multidimensional Search: Block $k$-d trees (BKD Trees) for numeric/timestamp filtering.
-  - Trade-off Profile: Sub-second unstructured queries vs. memory-intensive term dictionaries and high indexing compute.
-- **3.4. Static Function Approximation: Static Learned Indexes (RMI)**
-  - System Integration: Immutable SSTable Fence Pointers (e.g., BOURBON Engine in LSMs).
-  - Core Concept: Cumulative Distribution Function (CDF) approximation: $\text{pos} \approx \text{CDF}(\text{key}) \times N$.
-  - Recursive Model Index (RMI): Multi-stage hierarchical regression with bounded error $[\text{pos}-\epsilon, \text{pos}+\epsilon]$.
-  - Industrial Fit: Immutable LSM SSTables (permanent order, zero in-place updates).
-  - The Static Bottleneck: $O(N)$ copy overhead and complete retraining on dynamic writes.
-- **3.5. Dynamic Updatable Learned Indexing: The ALEX Architecture**
-  - Storage Layout: Two-tier hierarchy (Internal routing models vs. Leaf Data Nodes).
-  - Gapped-Array Mechanism: Calculated gaps to absorb writes locally without full array shifts.
-  - Search Mechanics: Model-predicted slot targeting with Exponential (Galloping) Search.
-  - Trade-off Profile: Near-$O(1)$ lookup latency and low memory footprint vs. node expansion/retraining spikes.
+### 3. Lexical & Multi-Attribute Search: Elasticsearch (Inverted Index & Lucene)
+- **3.1. Workload Target & Architectural Rationale:**
+  - Unstructured full-text search, multi-term filtering, log analytics, and relevance-scored information retrieval.
+- **3.2. Text Ingestion & Analysis Pipeline:**
+  - Tokenization, normalization, stop-word elimination, and linguistic stemming (Porter Stemmer).
+- **3.3. Core Data Structures:**
+  - **Term Dictionary:** Finite State Transducer (FST) compressed in RAM for $O(\text{term\_length})$ dictionary lookups.
+  - **Posting Lists:** Ordered document IDs, term frequencies ($tf$), and term positions/offsets.
+  - **Skip Lists / Skip Pointers:** Enabling sub-linear $O(\min(|P_1|, |P_2|))$ posting intersections for multi-term Boolean AND queries.
+- **3.4. Probabilistic Relevance Ranking (Okapi BM25):**
+  - Mathematical formulation of BM25 scoring: Inverse Document Frequency (IDF), term frequency saturation ($k_1 = 1.2$), and document length normalization ($b = 0.75$).
+- **3.5. Immutability & Segment Lifecycle:**
+  - Lucene segment immutability, in-memory indexing buffer, Translog durability, and background TieredMergePolicy.
 
 ---
 
-### 4. Empirical Evaluation & Comparative Analysis
-- **4.1. Master Search Technology Comparison Matrix:**
-  - Side-by-side evaluation across: B+ Tree, LSM-Tree, Inverted Index, Static RMI, Dynamic ALEX.
-  - Metrics: Point Lookup Latency, Sequential Ingestion, Random Insert Cost, Memory Footprint (Bytes/Key), Range Query Capability, Primary Workload Target.
-- **4.2. Workload Stress-Testing Insights:**
-  - 4.2.1. Point read-heavy workloads (ALEX vs. B+ Tree cache efficiency).
-  - 4.2.2. High-throughput write ingestion (Cassandra LSM vs. tree-based structures).
-  - 4.2.3. Complex filtering and token matching (Elasticsearch vs. primary-key indexes).
-  - 4.2.4. Storage and index size compression (Learned models vs. pointer graphs).
+### 4. Empirical Evaluation & Head-to-Head Comparison
+- **4.1. Scientific Benchmark Setup & Methodology:**
+  - Real-world datasets: World Cities Geonames ($N=10,000$ numerical primary keys) and Quotes Natural Language Corpus ($N=1,655$ documents).
+  - Rigorous scientific measurement: 1 warmup run (discarded) + 5 repeated trials; reporting mean and standard deviation ($\mu \pm \sigma$).
+- **4.2. Ingestion Throughput & Query Latency:**
+  - Cassandra sequential ingestion vs. Elasticsearch tokenization & posting construction rate.
+  - Point lookup hit vs. miss latency (Bloom Filter fast-fail).
+  - BM25 ranked scoring vs. Boolean AND/OR posting list intersections.
+- **4.3. Workload Stress-Testing Suite:**
+  - 4.3.1. Cassandra write ingestion scaling across batch sizes ($N=2,500$ to $10,000$).
+  - 4.3.2. Bloom Filter fast-fail impact on absent key lookups (100% disk seek pruning).
+  - 4.3.3. Lexical search acceleration: Inverted Index vs. Brute-force linear scan ($71.5\times$ speedup).
+  - 4.3.4. Memory footprint scaling across data volume.
+- **4.4. Master Architectural Comparison Table:**
+  - Comprehensive trade-off matrix across algorithmic complexity, RUM overheads, and empirical numbers.
 
 ---
 
-### 5. Architectural Synthesis & Future Horizons
-- **5.1. System Selection Framework:**
-  - Decision heuristics for database engine architects based on RUM priorities.
-- **5.2. Emerging Hybrid Designs:**
-  - Integrating learned models into distributed LSM SSTables (Learned-Cassandra) and analytical columnar data stores.
+### 5. Architectural Synthesis & System Selection Framework
+- **5.1. System Selection Heuristic:**
+  - Concrete decision tree for database engineers: when to adopt Cassandra vs. Elasticsearch.
+- **5.2. Modern Dual-Engine Integration Patterns:**
+  - CQRS (Command Query Responsibility Segregation): Cassandra for high-velocity write ingestion + Change Data Capture (CDC / Debezium) syncing to Elasticsearch for real-time faceted search.
+- **5.3. Summary Conclusion:**
+  - Synthesis of findings and concluding takeaways.

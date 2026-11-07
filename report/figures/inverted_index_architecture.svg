@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 680" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgInv" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1120" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <filter id="fShadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <rect width="900" height="680" fill="url(#bgInv)" rx="16" />
+
+  <text x="450" y="40" font-family="sans-serif" font-size="22" font-weight="700" fill="#f8fafc" text-anchor="middle">Elasticsearch / Lucene Inverted Index Architecture</text>
+  <text x="450" y="65" font-family="sans-serif" font-size="13" fill="#94a3b8" text-anchor="middle">Text Analysis, FST Term Dictionary, Skip-List Postings, and BM25 Relevance Scoring</text>
+
+  <!-- 1. TEXT ANALYSIS PIPELINE -->
+  <g transform="translate(60, 95)" filter="url(#fShadow)">
+    <rect width="780" height="110" rx="10" fill="#111827" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="25" y="28" font-family="sans-serif" font-size="13" font-weight="700" fill="#38bdf8">1. INGESTION &amp; TEXT ANALYSIS PIPELINE (ANALYZER)</text>
+
+    <!-- Raw Doc -->
+    <rect x="25" y="45" width="170" height="50" rx="6" fill="#1e293b" stroke="#64748b" />
+    <text x="110" y="66" font-family="sans-serif" font-size="11" font-weight="700" fill="#f1f5f9" text-anchor="middle">Raw Document</text>
+    <text x="110" y="82" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">"Cassandra LSM Trees!"</text>
+
+    <!-- Arrow -->
+    <path d="M 195 70 L 230 70" stroke="#38bdf8" stroke-width="2" />
+
+    <!-- Character & Tokenizer -->
+    <rect x="230" y="45" width="180" height="50" rx="6" fill="#1e3a8a" stroke="#60a5fa" />
+    <text x="320" y="66" font-family="sans-serif" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">Tokenizer</text>
+    <text x="320" y="82" font-family="sans-serif" font-size="10" fill="#93c5fd" text-anchor="middle">["Cassandra", "LSM", "Trees"]</text>
+
+    <!-- Arrow -->
+    <path d="M 410 70 L 445 70" stroke="#38bdf8" stroke-width="2" />
+
+    <!-- Token Filters -->
+    <rect x="445" y="45" width="310" height="50" rx="6" fill="#064e3b" stroke="#34d399" />
+    <text x="600" y="66" font-family="sans-serif" font-size="11" font-weight="700" fill="#a7f3d0" text-anchor="middle">Token Filters (Lowercase, Porter Stemmer)</text>
+    <text x="600" y="82" font-family="sans-serif" font-size="10" fill="#6ee7b7" text-anchor="middle">Tokens: ["cassandra", "lsm", "tree"]</text>
+  </g>
+
+  <!-- 2. INVERTED INDEX DATA STRUCTURES -->
+  <g transform="translate(60, 225)" filter="url(#fShadow)">
+    <rect width="780" height="270" rx="10" fill="#111827" stroke="#818cf8" stroke-width="1.5" />
+    <text x="25" y="28" font-family="sans-serif" font-size="13" font-weight="700" fill="#c7d2fe">2. CORE INVERTED INDEX DATA STRUCTURES</text>
+
+    <!-- Term Dictionary (FST) -->
+    <g transform="translate(25, 45)">
+      <rect width="250" height="205" rx="8" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.5" />
+      <text x="125" y="25" font-family="sans-serif" font-size="12" font-weight="700" fill="#c7d2fe" text-anchor="middle">Term Dictionary (FST)</text>
+      <text x="125" y="42" font-family="sans-serif" font-size="10" fill="#a5b4fc" text-anchor="middle">Memory-resident Prefix Automaton</text>
+
+      <rect x="15" y="55" width="220" height="30" rx="4" fill="#312e81" />
+      <text x="25" y="75" font-family="sans-serif" font-size="11" font-weight="700" fill="#ffffff">"cassandra"</text>
+      <text x="200" y="75" font-family="sans-serif" font-size="11" fill="#38bdf8" text-anchor="end">IDF: 2.1 →</text>
+
+      <rect x="15" y="92" width="220" height="30" rx="4" fill="#312e81" />
+      <text x="25" y="112" font-family="sans-serif" font-size="11" font-weight="700" fill="#ffffff">"elastic"</text>
+      <text x="200" y="112" font-family="sans-serif" font-size="11" fill="#38bdf8" text-anchor="end">IDF: 1.8 →</text>
+
+      <rect x="15" y="129" width="220" height="30" rx="4" fill="#312e81" />
+      <text x="25" y="149" font-family="sans-serif" font-size="11" font-weight="700" fill="#ffffff">"lsm"</text>
+      <text x="200" y="149" font-family="sans-serif" font-size="11" fill="#38bdf8" text-anchor="end">IDF: 2.4 →</text>
+
+      <rect x="15" y="166" width="220" height="30" rx="4" fill="#312e81" />
+      <text x="25" y="186" font-family="sans-serif" font-size="11" font-weight="700" fill="#ffffff">"tree"</text>
+      <text x="200" y="186" font-family="sans-serif" font-size="11" fill="#38bdf8" text-anchor="end">IDF: 1.2 →</text>
+    </g>
+
+    <!-- Posting Lists (with skip pointers) -->
+    <g transform="translate(300, 45)">
+      <rect width="455" height="205" rx="8" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5" />
+      <text x="227" y="25" font-family="sans-serif" font-size="12" font-weight="700" fill="#38bdf8" text-anchor="middle">Posting Lists with Skip Pointers &amp; Term Frequencies</text>
+
+      <!-- Row 1: cassandra -->
+      <g transform="translate(15, 45)">
+        <rect x="0" y="0" width="75" height="35" rx="4" fill="#1e293b" stroke="#38bdf8" />
+        <text x="37" y="16" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">Doc 1</text>
+        <text x="37" y="28" font-family="sans-serif" font-size="9" fill="#93c5fd" text-anchor="middle">tf: 2, pos:[0,4]</text>
+
+        <line x1="75" y1="17" x2="110" y2="17" stroke="#38bdf8" stroke-width="2" />
+
+        <rect x="110" y="0" width="75" height="35" rx="4" fill="#1e293b" stroke="#38bdf8" />
+        <text x="147" y="16" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">Doc 12</text>
+        <text x="147" y="28" font-family="sans-serif" font-size="9" fill="#93c5fd" text-anchor="middle">tf: 1, pos:[2]</text>
+
+        <!-- Skip Pointer -->
+        <path d="M 37 0 Q 147 -20 257 0" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3,3" fill="none" />
+        <text x="147" y="-12" font-family="sans-serif" font-size="8" fill="#fbbf24" text-anchor="middle">Skip Pointer (d=12)</text>
+
+        <line x1="185" y1="17" x2="220" y2="17" stroke="#38bdf8" stroke-width="2" />
+
+        <rect x="220" y="0" width="75" height="35" rx="4" fill="#1e293b" stroke="#38bdf8" />
+        <text x="257" y="16" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">Doc 45</text>
+        <text x="257" y="28" font-family="sans-serif" font-size="9" fill="#93c5fd" text-anchor="middle">tf: 3, pos:[1,5,8]</text>
+
+        <line x1="295" y1="17" x2="330" y2="17" stroke="#38bdf8" stroke-width="2" />
+
+        <rect x="330" y="0" width="75" height="35" rx="4" fill="#1e293b" stroke="#38bdf8" />
+        <text x="367" y="16" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">Doc 99</text>
+        <text x="367" y="28" font-family="sans-serif" font-size="9" fill="#93c5fd" text-anchor="middle">tf: 1, pos:[7]</text>
+      </g>
+
+      <!-- Row 2: lsm -->
+      <g transform="translate(15, 125)">
+        <rect x="0" y="0" width="75" height="35" rx="4" fill="#1e293b" stroke="#10b981" />
+        <text x="37" y="16" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">Doc 1</text>
+        <text x="37" y="28" font-family="sans-serif" font-size="9" fill="#6ee7b7" text-anchor="middle">tf: 1, pos:[1]</text>
+
+        <line x1="75" y1="17" x2="110" y2="17" stroke="#10b981" stroke-width="2" />
+
+        <rect x="110" y="0" width="75" height="35" rx="4" fill="#1e293b" stroke="#10b981" />
+        <text x="147" y="16" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">Doc 45</text>
+        <text x="147" y="28" font-family="sans-serif" font-size="9" fill="#6ee7b7" text-anchor="middle">tf: 2, pos:[3,6]</text>
+
+        <line x1="185" y1="17" x2="220" y2="17" stroke="#10b981" stroke-width="2" />
+
+        <rect x="220" y="0" width="75" height="35" rx="4" fill="#1e293b" stroke="#10b981" />
+        <text x="257" y="16" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">Doc 80</text>
+        <text x="257" y="28" font-family="sans-serif" font-size="9" fill="#6ee7b7" text-anchor="middle">tf: 1, pos:[0]</text>
+
+        <text x="330" y="22" font-family="sans-serif" font-size="10" font-weight="700" fill="#34d399">Intersection (AND):</text>
+        <text x="330" y="38" font-family="sans-serif" font-size="10" fill="#a7f3d0">Docs [1, 45] in O(min(|P1|, |P2|))</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- 3. BM25 RELEVANCE SCORING -->
+  <g transform="translate(60, 510)" filter="url(#fShadow)">
+    <rect width="780" height="135" rx="10" fill="#111827" stroke="#f59e0b" stroke-width="1.5" />
+    <text x="25" y="28" font-family="sans-serif" font-size="13" font-weight="700" fill="#fbbf24">3. OKAPI BM25 RELEVANCE RANKING MODEL</text>
+
+    <text x="390" y="60" font-family="Courier, monospace" font-size="13" font-weight="700" fill="#fef08a" text-anchor="middle">
+      Score(D, Q) = ∑ [ IDF(q) · ( tf(q, D) · (k₁ + 1) ) / ( tf(q, D) + k₁ · (1 - b + b · |D| / avgdl) ) ]
+    </text>
+
+    <text x="45" y="95" font-family="sans-serif" font-size="11" fill="#cbd5e1">• <tspan font-weight="700" fill="#38bdf8">k₁ = 1.2</tspan>: Calibrates Term Frequency saturation curve (prevents spamming from dominating score)</text>
+    <text x="45" y="115" font-family="sans-serif" font-size="11" fill="#cbd5e1">• <tspan font-weight="700" fill="#34d399">b = 0.75</tspan>: Document length normalization factor (penalizes abnormally verbose documents)</text>
+  </g>
+</svg>

@@ -1,8 +1,5 @@
-"""Modern Database Search Techniques package."""
-from src.bplus_tree import BPlusTree
+"""Modern Database Search Techniques package: Apache Cassandra (LSM) & Elasticsearch (Inverted Index)."""
 from src.lsm_tree import LSMTree
 from src.inverted_index import InvertedIndex
-from src.learned_rmi import StaticRMI
-from src.learned_alex import DynamicALEX
 
-__all__ = ["BPlusTree", "LSMTree", "InvertedIndex", "StaticRMI", "DynamicALEX"]
+__all__ = ["LSMTree", "InvertedIndex"]

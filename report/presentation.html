@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Specialized Modern Database Search Engines: Cassandra vs. Elasticsearch</title>
+<style>
+  :root {
+    --bg-dark: #090d16;
+    --card-bg: #111827;
+    --card-border: #1e293b;
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent-blue: #38bdf8;
+    --accent-emerald: #34d399;
+    --accent-amber: #fbbf24;
+    --accent-rose: #f43f5e;
+    --accent-purple: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Top Bar */
+  header {
+    height: 48px;
+    padding: 0 24px;
+    background: #0f172a;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .badge {
+    background: #1e293b;
+    color: var(--accent-blue);
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .timer {
+    font-family: monospace;
+    font-weight: 700;
+    color: var(--accent-amber);
+    background: #1e293b;
+    padding: 3px 10px;
+    border-radius: 6px;
+  }
+  /* Presentation Canvas */
+  main {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .slide {
+    display: none;
+    width: 100%;
+    max-width: 1100px;
+    height: calc(100vh - 120px);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 36px 44px;
+    overflow-y: auto;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    animation: fadeIn 0.25s ease-in-out;
+  }
+  .slide.active {
+    display: flex;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  /* Slide Components */
+  .slide-header {
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .slide-category {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    color: var(--accent-blue);
+    margin-bottom: 4px;
+  }
+  .slide-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #ffffff;
+  }
+  .slide-body {
+    flex: 1;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .col-text {
+    flex: 1;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #cbd5e1;
+  }
+  .col-text h3 {
+    color: var(--accent-amber);
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .col-text ul {
+    margin-left: 20px;
+    margin-bottom: 12px;
+  }
+  .col-text li {
+    margin-bottom: 6px;
+  }
+  .col-visual {
+    flex: 1.1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .col-visual img, .col-visual svg {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+  }
+  pre, code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+  }
+  .code-box {
+    background: #090d16;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 16px;
+    color: #38bdf8;
+    width: 100%;
+    overflow-x: auto;
+    line-height: 1.45;
+  }
+  .demo-box {
+    background: #1e1b4b;
+    border: 2px solid var(--accent-purple);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    width: 100%;
+  }
+  .demo-box h2 {
+    font-size: 26px;
+    color: #f5d0fe;
+    margin-bottom: 12px;
+  }
+  .demo-command {
+    display: inline-block;
+    background: #090d16;
+    color: #34d399;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 16px 0;
+    border: 1px solid #334155;
+  }
+  /* Footer Controls */
+  footer {
+    height: 52px;
+    padding: 0 24px;
+    background: #0f172a;
+    border-top: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .btn {
+    background: #1e293b;
+    color: #f8fafc;
+    border: 1px solid #334155;
+    padding: 7px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .btn:hover {
+    background: var(--accent-blue);
+    color: #090d16;
+  }
+  .btn-primary {
+    background: var(--accent-blue);
+    color: #090d16;
+  }
+  .speaker-notes-toggle {
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  /* Speaker Notes Panel */
+  #speaker-panel {
+    display: none;
+    position: fixed;
+    bottom: 52px;
+    left: 24px;
+    right: 24px;
+    background: #020617;
+    border: 2px solid var(--accent-amber);
+    border-radius: 12px 12px 0 0;
+    padding: 16px 20px;
+    color: #fef08a;
+    font-size: 14px;
+    line-height: 1.5;
+    max-height: 140px;
+    overflow-y: auto;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+    z-index: 100;
+  }
+  #speaker-panel.open {
+    display: block;
+  }
+  .progress-bar-bg {
+    position: fixed;
+    bottom: 52px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #1e293b;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent-blue);
+    width: 6.25%;
+    transition: width 0.2s;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <span class="badge">CO5173 • HCMUT</span>
+    <span style="margin-left: 10px; font-weight: 600; color: #f8fafc;">Specialized Database Search: Cassandra (LSM) vs. Elasticsearch (Inverted)</span>
+  </div>
+  <div style="display: flex; gap: 12px; align-items: center;">
+    <span class="timer" id="timer-display">00:00 / 15:00</span>
+    <span id="slide-num" style="font-weight: 700; color: #f8fafc;">1 / 16</span>
+  </div>
+</header>
+
+<div class="progress-bar-bg">
+  <div class="progress-bar-fill" id="progress-bar"></div>
+</div>
+
+<main>
+
+  <!-- SLIDE 1 -->
+  <div class="slide active" data-notes="Good morning Professor and classmates. Today we present Specialized Modern Database Search Engines: Apache Cassandra versus Elasticsearch. We deconstruct their architectures step-by-step like an animation, execute live code demos, and analyze their empirical RUM trade-offs.">
+    <div class="slide-header">
+      <div class="slide-category">Introduction &amp; Scope</div>
+      <div class="slide-title">Specialized Modern Database Search Engines</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <h2 style="font-size: 28px; color: var(--accent-blue); margin-bottom: 12px;">Apache Cassandra (LSM) vs. Elasticsearch (Inverted Index)</h2>
+        <p style="font-size: 16px; margin-bottom: 20px;">An Architectural, Theoretical, and Empirical Analysis Across the RUM Trade-Off Space</p>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border-left: 4px solid var(--accent-blue);">
+          <p><strong>Course:</strong> Data Engineering (CO5173) – HCMUT</p>
+          <p><strong>Instructor:</strong> Assoc. Prof. Tran Minh Quang</p>
+          <p><strong>Authors:</strong> Nguyen Dinh Hoang Son (<code>2670362</code>) &amp; Nguyen Doan Phuc An (<code>2670249</code>)</p>
+          <p><strong>Date:</strong> 2026 • 15-Minute Technical Presentation</p>
+        </div>
+      </div>
+      <div class="col-visual">
+        <img src="figures/rum_conjecture.svg" alt="RUM Conjecture" style="max-height: 340px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2 -->
+  <div class="slide" data-notes="Database design is governed by the RUM Conjecture from EDBT 2016. You cannot simultaneously optimize Read Amplification, Update Amplification, and Memory Amplification. B+ Trees suffer from in-place page writes. Cassandra optimizes U by buffering writes and appending immutable SSTables. Elasticsearch optimizes R for multi-term queries by precomputing posting lists, trading memory M.">
+    <div class="slide-header">
+      <div class="slide-category">Theoretical Foundation</div>
+      <div class="slide-title">The Governing Law: The RUM Conjecture</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <h3>The Storage Trilemma (Athanassoulis et al., EDBT 2016)</h3>
+        <p style="margin-bottom: 12px;">Optimizing any two overheads inevitably compromises the third:</p>
+        <ul>
+          <li><strong>Read Amplification (R):</strong> Physical bytes read / logical bytes returned.</li>
+          <li><strong>Update Amplification (U):</strong> Physical bytes written / logical bytes modified.</li>
+          <li><strong>Memory Amplification (M):</strong> Auxiliary index footprint / raw data size.</li>
+        </ul>
+        <div style="background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #334155; margin-top: 10px;">
+          <p>• <strong style="color: var(--accent-amber);">Cassandra (LSM):</strong> Minimizes <strong>U</strong> via sequential appends; trades higher <strong>R</strong>.</p>
+          <p>• <strong style="color: var(--accent-blue);">Elasticsearch (Inverted):</strong> Minimizes <strong>R</strong> for complex search; trades higher <strong>M</strong> &amp; <strong>U</strong>.</p>
+        </div>
+      </div>
+      <div class="col-visual">
+        <img src="figures/rum_conjecture.svg" alt="RUM Conjecture" style="max-height: 360px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 -->
+  <div class="slide" data-notes="Cassandra's core philosophy is: never update data in place. Writes enter an in-memory CommitLog on disk for durability and a MemTable SkipList in RAM. When full, MemTable flushes to immutable SSTables. Let us step through writes, flushes, reads, and deletes across the next 4 animation frames.">
+    <div class="slide-header">
+      <div class="slide-category">Cassandra Architecture</div>
+      <div class="slide-title">Cassandra Storage Hierarchy Overview</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <h3>Philosophy: Defer Sorting &amp; Convert Writes to Sequential I/O</h3>
+        <ul>
+          <li><strong>In-Memory Layer (RAM):</strong>
+            <ul>
+              <li><code>CommitLog</code>: Sequential disk WAL for crash recovery (zero disk seeks).</li>
+              <li><code>MemTable</code>: Concurrent SkipList in DRAM (O(log N) point writes).</li>
+            </ul>
+          </li>
+          <li><strong>On-Disk Layer (Storage):</strong>
+            <ul>
+              <li><code>Immutable SSTables</code>: Data files, sparse fence index, and Bloom filters.</li>
+              <li><code>Compaction Engine</code>: Asynchronous multi-way merge sort.</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+      <div class="col-visual">
+        <img src="figures/lsm_tree_architecture.svg" alt="LSM Architecture" style="max-height: 360px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4 -->
+  <div class="slide" data-notes="Frame 1: A client mutation arrives. Cassandra appends sequentially to the CommitLog and inserts into the sorted MemTable in RAM. The client receives an immediate ACK. Zero random disk I/O, zero page locking, and zero page splitting.">
+    <div class="slide-header">
+      <div class="slide-category">Cassandra Step-by-Step Animation • Frame 1 / 4</div>
+      <div class="slide-title">Step 1: Write Path to CommitLog &amp; MemTable</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <div class="code-box">
+<span style="color:#a78bfa;">Client Mutation:</span> <span style="color:#fef08a;">put(Key 101, "Alice")</span>
+       │
+       ├──► <span style="color:#34d399;">[1. Synchronous Append]</span> ──► <span style="color:#38bdf8;">CommitLog (Disk WAL)</span>
+       │                                 • Zero random disk seeks (append-only)
+       │                                 • Crash durability guaranteed
+       │
+       └──► <span style="color:#34d399;">[2. Insert Sorted]</span>     ──► <span style="color:#38bdf8;">MemTable (RAM SkipList)</span>
+                                         • In-memory sorted order
+                                         • Sub-microsecond response time
+<span style="color:#34d399;">Result:</span> Client receives immediate ACK! Zero random disk I/O.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5 -->
+  <div class="slide" data-notes="Frame 2: When MemTable hits its threshold (e.g. 128 MB), Cassandra freezes it and streams it sequentially to disk as an immutable SSTable. The SSTable contains the sorted Data file, a Sparse Fence Index, and an in-memory Bloom filter.">
+    <div class="slide-header">
+      <div class="slide-category">Cassandra Step-by-Step Animation • Frame 2 / 4</div>
+      <div class="slide-title">Step 2: MemTable Threshold Flush to Immutable SSTable</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <div class="code-box">
+<span style="color:#fbbf24;">MemTable reaches capacity threshold</span> (e.g., 128 MB)
+       │
+       ▼ <span style="color:#34d399;">[Freeze &amp; Stream Contiguous Disk Writes]</span>
+┌─────────────────────────────────────────────────────────────────┐
+│ <span style="color:#38bdf8;">IMMUTABLE SSTABLE-0 ON DISK</span>                                     │
+│  ├─ <span style="color:#a78bfa;">Bloom Filter:</span> Probabilistic bit array (Kirsch-Mitzenmacher) │
+│  ├─ <span style="color:#fef08a;">Sparse Fence Index:</span> Keys sampled every 128 entries + offsets│
+│  └─ <span style="color:#34d399;">Sorted Data File:</span> Contiguous key-value records              │
+└─────────────────────────────────────────────────────────────────┘
+• MemTable reset to empty in RAM. Old CommitLog segment truncated.
+• SSTables are strictly immutable: zero read locks needed!
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6 -->
+  <div class="slide" data-notes="Frame 3: How does Cassandra read without scanning every SSTable? It checks MemTable first. If missed, it probes each SSTable's Bloom Filter. If any bit is 0, the key is absent—fast-failing in RAM without a single disk read! Over 99% of negative SSTable probes are pruned here.">
+    <div class="slide-header">
+      <div class="slide-category">Cassandra Step-by-Step Animation • Frame 3 / 4</div>
+      <div class="slide-title">Step 3: Read Path Pruning via In-Memory Bloom Filter</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <div class="code-box">
+<span style="color:#a78bfa;">Query:</span> <span style="color:#fef08a;">get(Key K)</span>
+  │
+  ├─► <span style="color:#38bdf8;">1. Check Active MemTable</span> ──(Hit)──► Return Value (0 disk reads)
+  │         │ (Miss)
+  │         ▼
+  └─► <span style="color:#38bdf8;">2. Probe SSTables (Newest to Oldest)</span>
+        │
+        ├─► <span style="color:#a78bfa;">Bloom Filter Check: g_i(k) = (h1 + i*h2) mod m</span>
+        │     ├─► Any Bit == 0? ──► <span style="color:#f43f5e; font-weight:700;">FAST-FAIL PRUNED! (0 Disk Seeks)</span>
+        │     └─► All Bits == 1? (Potential Hit)
+        │           │
+        │           ▼
+        └─► <span style="color:#fef08a;">Binary Search Sparse Index</span> ──► Localized Data Block Seek
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7 -->
+  <div class="slide" data-notes="Frame 4: Deletions write Tombstones with timestamps. In the background, Compaction performs an O(N) multi-way merge sort across overlapping SSTables. It reconciles versions, purges dead tombstones, and emits a single, compacted SSTable—recovering disk space.">
+    <div class="slide-header">
+      <div class="slide-category">Cassandra Step-by-Step Animation • Frame 4 / 4</div>
+      <div class="slide-title">Step 4: Tombstone Lifecycle &amp; Multi-Way Compaction</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <div class="code-box">
+<span style="color:#f43f5e;">1. Deletion: delete(Key 102)</span>
+   └──► Writes <span style="color:#f43f5e;">TOMBSTONE(102, timestamp)</span> into MemTable.
+        (Older versions in SSTable-0 remain masked until compaction).
+
+<span style="color:#34d399;">2. Asynchronous Multi-Way Merge Compaction:</span>
+   [ SSTable-0: k101, k102, k103 (v1) ] ┐
+   [ SSTable-1: k103 (v2), k104       ] ┼─► <span style="color:#38bdf8;">[ Multi-Way Merge ]</span>
+   [ SSTable-2: TOMBSTONE(k102)       ] ┘   • Purge k102 permanently
+                                            • Keep latest k103 (v2)
+                                            ▼
+                       <span style="color:#34d399;">[ Consolidated SSTable: k101, k103(v2), k104 ]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: DEMO STOP 1 -->
+  <div class="slide" data-notes="Let us switch to the terminal and run Demo 1! We execute python3 demo.py --cassandra. Point out: 1) MemTable insertion, 2) Threshold flush to SSTable-0, 3) Existing key point hit vs. absent key Bloom filter fast-fail, 4) Tombstone deletion and compaction purging.">
+    <div class="slide-header">
+      <div class="slide-category">Live Code Execution • Checkpoint 1</div>
+      <div class="slide-title">🛑 LIVE DEMO STOP 1: Apache Cassandra Engine</div>
+    </div>
+    <div class="slide-body" style="justify-content: center;">
+      <div class="demo-box">
+        <h2>DEMO 1: CASSANDRA LSM STORAGE ENGINE</h2>
+        <p style="color: #cbd5e1; font-size: 15px;">Switching to terminal session to execute live mechanics:</p>
+        <div class="demo-command">python3 demo.py --cassandra</div>
+        <div style="text-align: left; max-width: 550px; margin: 0 auto; color: #cbd5e1; font-size: 14px;">
+          <p>✔ <strong>Checkpoint 1:</strong> MemTable in-memory SkipList insertion.</p>
+          <p>✔ <strong>Checkpoint 2:</strong> Threshold flush &amp; Bloom filter generation.</p>
+          <p>✔ <strong>Checkpoint 3:</strong> Existing Hit (5.4 µs) vs. Absent Key Bloom Fast-Fail (3.4 µs, 0 disk I/O).</p>
+          <p>✔ <strong>Checkpoint 4:</strong> Tombstone deletion and multi-way merge compaction.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9 -->
+  <div class="slide" data-notes="Now we transition to Elasticsearch. Relational databases map documents to columns. To search unstructured words, they must scan every row. Elasticsearch inverts the relationship: mapping every unique term to the list of documents containing it. Let us trace this through the next 4 animation frames.">
+    <div class="slide-header">
+      <div class="slide-category">Elasticsearch Architecture</div>
+      <div class="slide-title">Elasticsearch &amp; Inverted Index Overview</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <h3>Philosophy: Invert Document-to-Term into Term-to-Document</h3>
+        <ul>
+          <li><strong>The Inverted Principle:</strong>
+            Instead of <code>Doc_1 -> ["cassandra", "lsm"]</code>, store <code>"lsm" -> [Doc_1, Doc_3]</code>.
+          </li>
+          <li><strong>Four Core Components:</strong>
+            <ul>
+              <li><code>Analysis Pipeline</code>: Character filters, Tokenizer, Lowercase, Porter Stemmer.</li>
+              <li><code>FST Term Dictionary</code>: In-memory prefix/suffix compressed automaton.</li>
+              <li><code>Posting Lists &amp; Skip Lists</code>: Sorted doc IDs with skip pointers.</li>
+              <li><code>Okapi BM25</code>: Probabilistic relevance ranking with length normalization.</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+      <div class="col-visual">
+        <img src="figures/inverted_index_architecture.svg" alt="Inverted Index Architecture" style="max-height: 360px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10 -->
+  <div class="slide" data-notes="Frame 1: Before text can be indexed, it enters the Analysis Pipeline. Character filters strip markup; tokenizer splits on whitespace and punctuation; token filters lowercase tokens, remove stop-words, and stem inflections using the Porter Stemmer.">
+    <div class="slide-header">
+      <div class="slide-category">Elasticsearch Step-by-Step Animation • Frame 1 / 4</div>
+      <div class="slide-title">Step 1: Text Analysis Pipeline (Analyzer)</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <div class="code-box">
+<span style="color:#a78bfa;">Raw Document Text:</span>
+  "Apache Cassandra provides high write throughput with LSM trees!"
+  │
+  ├──► <span style="color:#38bdf8;">[1. Character Filter]</span>   ──► Strips HTML, decodes Unicode entities
+  │
+  ├──► <span style="color:#38bdf8;">[2. Tokenizer]</span>          ──► Breaks on whitespace &amp; punctuation:
+  │                                ["Apache", "Cassandra", "provides", "high", ...]
+  │
+  └──► <span style="color:#38bdf8;">[3. Token Filters]</span>      ──► Lowercasing: "Cassandra" -&gt; "cassandra"
+                                   Stop-words: drops "with"
+                                   Porter Stemmer: "provides" -&gt; "provid", "trees" -&gt; "tree"
+<span style="color:#34d399;">Indexed Tokens:</span> ["apach", "cassandra", "provid", "high", "write", "throughput", "lsm", "tree"]
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11 -->
+  <div class="slide" data-notes="Frame 2: Lucene stores unique terms in a Finite State Transducer (FST) in memory. The FST shares common prefixes and suffixes, compressing millions of vocabulary words into megabytes of RAM. Each term points to a sorted posting list.">
+    <div class="slide-header">
+      <div class="slide-category">Elasticsearch Step-by-Step Animation • Frame 2 / 4</div>
+      <div class="slide-title">Step 2: Memory FST Term Dictionary &amp; Posting Lists</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <div class="code-box">
+<span style="color:#a78bfa;">TERM DICTIONARY (In-Memory FST)</span>              <span style="color:#38bdf8;">POSTING LISTS (On Disk / Cache)</span>
+┌─────────────────────────────────┐          ┌────────────────────────────────────────┐
+│ <span style="color:#fef08a;">Finite State Transducer (FST)</span>   │          │ <span style="color:#34d399;">Strictly Sorted by doc_id</span>              │
+│ (Prefix &amp; Suffix Compressed)    │          │                                        │
+│  "cassandra" ───────────────────┼─────────►│ [Doc 1 (tf:1)] ──► [Doc 3 (tf:2)]      │
+│  "elastic"   ───────────────────┼─────────►│ [Doc 2 (tf:1)] ──► [Doc 4 (tf:1)]      │
+│  "lsm"       ───────────────────┼─────────►│ [Doc 1 (tf:2)]                          │
+│  "write"     ───────────────────┼─────────►│ [Doc 1 (tf:1)] ──► [Doc 3 (tf:1)]      │
+└─────────────────────────────────┘          └────────────────────────────────────────┘
+Lookup time: O(term_length) in RAM           Contains: doc_id, term_frequency, offsets
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 12 -->
+  <div class="slide" data-notes="Frame 3: For multi-term queries like 'write AND search', Elasticsearch intersects their sorted posting lists. Lucene embeds skip pointers every K documents. If list A is at doc 1 and list B is at doc 45, list A leaps to doc 45 in O(1) time, skipping hundreds of documents! Intersection runs in O(min(|P1|, |P2|)).">
+    <div class="slide-header">
+      <div class="slide-category">Elasticsearch Step-by-Step Animation • Frame 3 / 4</div>
+      <div class="slide-title">Step 3: Boolean AND Search with Skip Lists</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <div class="code-box">
+<span style="color:#a78bfa;">Query:</span> <span style="color:#fef08a;">"write" AND "search"</span>
+
+Posting P("write"):  <span style="color:#38bdf8;">[Doc 1]</span> ──────────────────► <span style="color:#38bdf8;">[Doc 45]</span> ──► [Doc 99]
+                           \ <span style="color:#fbbf24;">(Skip Pointer: jump to 45)</span> /
+Posting P("search"): <span style="color:#34d399;">[Doc 12]</span> ─► [Doc 28] ─────► <span style="color:#34d399;">[Doc 45]</span> ──► [Doc 80]
+
+<span style="color:#fef08a;">Intersection Step:</span>
+  1. P("write") at Doc 1 &lt; P("search") at Doc 12 ──► Hop via Skip Pointer to Doc 45!
+  2. P("search") at Doc 12 &lt; 45 ──► Scan to Doc 45 ──► <span style="color:#34d399; font-weight:700;">MATCH: Doc 45!</span>
+
+<span style="color:#38bdf8;">Complexity:</span> Sub-linear O(min(|P_write|, |P_search|)) instead of full table scan.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 13 -->
+  <div class="slide" data-notes="Frame 4: Elasticsearch ranks results using Okapi BM25. IDF weights rare terms higher. The k1 parameter saturates term frequency, neutralizing keyword stuffing. The b parameter normalizes against document length, preventing long verbose documents from dominating.">
+    <div class="slide-header">
+      <div class="slide-category">Elasticsearch Step-by-Step Animation • Frame 4 / 4</div>
+      <div class="slide-title">Step 4: Okapi BM25 Relevance Scoring</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <div class="code-box">
+<span style="color:#fef08a;">Score(D, Q) = ∑ [ IDF(q) · ( tf(q, D) · (k₁ + 1) ) / ( tf(q, D) + k₁ · (1 - b + b · |D| / avgdl) ) ]</span>
+                  ▲              ▲                                   ▲
+                  │              │                                   │
+       <span style="color:#38bdf8;">1. Inverse Doc Freq</span>    <span style="color:#34d399;">2. TF Saturation Curve</span>             <span style="color:#fbbf24;">3. Length Penalty</span>
+       Rare terms receive     Marginal score decays              Penalizes verbose docs,
+       higher weight.         (Caps keyword stuffing).           boosts concise matches.
+       log(1 + (N-n+0.5)/(n+0.5))  k₁ = 1.2                      b = 0.75
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 14: DEMO STOP 2 -->
+  <div class="slide" data-notes="Let us switch to the terminal and run Demo 2! We execute python3 demo.py --elasticsearch. Point out: 1) Tokenizer and stemmer output, 2) Inverted posting list structure, 3) Boolean AND set intersection, 4) BM25 ranked scoring, and 5) The live benchmark showing over 70x speedup over linear scan!">
+    <div class="slide-header">
+      <div class="slide-category">Live Code Execution • Checkpoint 2</div>
+      <div class="slide-title">🛑 LIVE DEMO STOP 2: Elasticsearch &amp; BM25</div>
+    </div>
+    <div class="slide-body" style="justify-content: center;">
+      <div class="demo-box" style="border-color: var(--accent-blue);">
+        <h2 style="color: #bae6fd;">DEMO 2: ELASTICSEARCH INVERTED INDEX &amp; BM25</h2>
+        <p style="color: #cbd5e1; font-size: 15px;">Switching to terminal session to execute live mechanics:</p>
+        <div class="demo-command" style="color: var(--accent-blue);">python3 demo.py --elasticsearch</div>
+        <div style="text-align: left; max-width: 550px; margin: 0 auto; color: #cbd5e1; font-size: 14px;">
+          <p>✔ <strong>Checkpoint 1:</strong> Text Analysis: Tokenization, Lowercase &amp; Porter Stemmer.</p>
+          <p>✔ <strong>Checkpoint 2:</strong> Inverted posting list inspection (<code>Term -> [DocID, TF]</code>).</p>
+          <p>✔ <strong>Checkpoint 3:</strong> Boolean AND posting list set intersection (<code>"write" AND "search"</code>).</p>
+          <p>✔ <strong>Checkpoint 4:</strong> Okapi BM25 scored relevance ranking.</p>
+          <p>✔ <strong>Checkpoint 5:</strong> Live benchmark: <strong style="color: var(--accent-amber);">70x+ speedup</strong> over linear scan!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 15 -->
+  <div class="slide" data-notes="Here are our consolidated empirical benchmark results. Cassandra sustains over 85,000 writes/sec with a tiny memory footprint of 153 Bytes/key, protecting reads with Bloom filters. Elasticsearch evaluates Boolean AND in 20 µs and BM25 in 118 µs, but requires 2,292 Bytes/doc—15x more memory—for its FST term dictionary.">
+    <div class="slide-header">
+      <div class="slide-category">Empirical Results</div>
+      <div class="slide-title">Head-to-Head Empirical Benchmark Synthesis</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <table style="width:100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--accent-blue); text-align: left;">
+              <th style="padding: 8px 4px;">Metric (5 Trials, µ ± σ)</th>
+              <th style="padding: 8px 4px; color: var(--accent-amber);">Cassandra (LSM)</th>
+              <th style="padding: 8px 4px; color: var(--accent-blue);">Elasticsearch (Inverted)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid #1e293b;">
+              <td style="padding: 6px 4px;"><strong>Ingestion Rate</strong></td>
+              <td style="padding: 6px 4px;"><strong>85,624 ± 6,126 ops/s</strong></td>
+              <td style="padding: 6px 4px;"><strong>93,935 ± 3,385 docs/s</strong></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #1e293b;">
+              <td style="padding: 6px 4px;"><strong>Point Lookup (Hit)</strong></td>
+              <td style="padding: 6px 4px;"><strong>5.42 ± 0.27 µs</strong></td>
+              <td style="padding: 6px 4px; color: #64748b;">N/A</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #1e293b;">
+              <td style="padding: 6px 4px;"><strong>Negative Query (Miss)</strong></td>
+              <td style="padding: 6px 4px; color: var(--accent-emerald);"><strong>3.42 ± 0.71 µs (Bloom)</strong></td>
+              <td style="padding: 6px 4px; color: #64748b;">N/A</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #1e293b;">
+              <td style="padding: 6px 4px;"><strong>Boolean AND Query</strong></td>
+              <td style="padding: 6px 4px; color: #64748b;">N/A</td>
+              <td style="padding: 6px 4px;"><strong>20.36 ± 3.98 µs</strong></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #1e293b;">
+              <td style="padding: 6px 4px;"><strong>BM25 Ranked Search</strong></td>
+              <td style="padding: 6px 4px; color: #64748b;">N/A</td>
+              <td style="padding: 6px 4px;"><strong>118.40 ± 15.83 µs</strong></td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 4px;"><strong>Index Memory Footprint</strong></td>
+              <td style="padding: 6px 4px; color: var(--accent-emerald);"><strong>153.7 Bytes/key</strong></td>
+              <td style="padding: 6px 4px; color: var(--accent-rose);"><strong>2,292.8 Bytes/doc</strong></td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-size: 12px; color: var(--text-muted);">Measured on N=10,000 World Cities keys and 1,655 Quotes corpus with 1 warmup run discarded.</p>
+      </div>
+      <div class="col-visual">
+        <img src="figures/benchmark_comparison.svg" alt="Benchmark Comparison" style="max-height: 360px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 16 -->
+  <div class="slide" data-notes="To conclude: never force an engine outside its RUM specialization. Secondary indexes in Cassandra cause cluster-wide scatter-gather spikes. Using Elasticsearch as a write-heavy database causes segment merge thrashing. The enterprise standard is CQRS: use Cassandra as System of Record to absorb high writes, and stream mutations via CDC to Elasticsearch for rich search. Thank you!">
+    <div class="slide-header">
+      <div class="slide-category">Synthesis &amp; Conclusion</div>
+      <div class="slide-title">Architectural Synthesis: The CQRS Pattern</div>
+    </div>
+    <div class="slide-body">
+      <div class="col-text">
+        <h3>The Golden Rule: Never Force an Engine Outside Its RUM Bounds</h3>
+        <ul>
+          <li><strong>Cassandra Secondary Indexes (2i):</strong> Forces scatter-gather queries across every cluster node $\to$ cluster latency collapse.</li>
+          <li><strong>Elasticsearch as Primary DB:</strong> High write mutations force constant segment merges $\to$ GC pauses and write stalls.</li>
+        </ul>
+        <div style="background: #0f172a; padding: 14px; border-radius: 8px; border: 1px solid #334155; margin-top: 10px;">
+          <h4 style="color: var(--accent-emerald); margin-bottom: 6px;">The Production Standard: Dual-Engine CQRS</h4>
+          <p style="font-size: 13px;">1. <strong>Cassandra (Write Path):</strong> Primary System of Record absorbing high-velocity writes with linear horizontal scaling.</p>
+          <p style="font-size: 13px;">2. <strong>Change Data Capture (CDC / Kafka):</strong> Asynchronously streams commit log mutations.</p>
+          <p style="font-size: 13px;">3. <strong>Elasticsearch (Read Path):</strong> Builds inverted indexes to serve sub-millisecond BM25 search and faceted analytics.</p>
+        </div>
+      </div>
+      <div class="col-visual">
+        <div class="code-box" style="font-size: 12px;">
+<span style="color:#a78bfa;">[ Client Mutation / Write ]</span>
+            │
+            ▼
+┌───────────────────────────┐
+│ <span style="color:#fbbf24;">APACHE CASSANDRA</span>          │ ──► Primary System of Record
+│ (MemTable + CommitLog)    │     (High Ingestion, Linear Scale)
+└───────────────────────────┘
+            │
+    <span style="color:#34d399;">Change Data Capture</span> (Debezium / Kafka CDC)
+            │
+            ▼
+┌───────────────────────────┐
+│ <span style="color:#38bdf8;">ELASTICSEARCH</span>             │ ──► Search &amp; Analytics Engine
+│ (FST Dict + Postings)     │     (Sub-ms BM25, Multi-Term Queries)
+└───────────────────────────┘
+            ▲
+            │
+<span style="color:#a78bfa;">[ Complex User Search Query ]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div id="speaker-panel">
+  <strong>SPEAKER NOTES (Script for this slide):</strong>
+  <div id="speaker-text" style="margin-top: 6px;"></div>
+</div>
+
+<footer>
+  <div style="display: flex; gap: 8px;">
+    <button class="btn" id="prev-btn" onclick="prevSlide()">◀ Previous</button>
+    <button class="btn btn-primary" id="next-btn" onclick="nextSlide()">Next ▶</button>
+  </div>
+  <div style="display: flex; gap: 16px; align-items: center;">
+    <span class="speaker-notes-toggle" id="notes-toggle-btn" onclick="toggleNotes()">[S] Toggle Speaker Notes</span>
+    <span style="font-size: 12px; color: #64748b;">Shortcuts: [←/→] Navigate | [S] Notes | [F] Fullscreen</span>
+  </div>
+</footer>
+
+<script>
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.slide');
+  const slideNumDisplay = document.getElementById('slide-num');
+  const progressBar = document.getElementById('progress-bar');
+  const speakerText = document.getElementById('speaker-text');
+  const speakerPanel = document.getElementById('speaker-panel');
+  const timerDisplay = document.getElementById('timer-display');
+
+  // Presentation Timer (15:00 countdown / countup)
+  let secondsElapsed = 0;
+  setInterval(() => {
+    secondsElapsed++;
+    const mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+    const secs = (secondsElapsed % 60).toString().padStart(2, '0');
+    timerDisplay.innerText = `${mins}:${secs} / 15:00`;
+    if (secondsElapsed >= 14 * 60) {
+      timerDisplay.style.color = '#f43f5e';
+    } else if (secondsElapsed >= 12 * 60) {
+      timerDisplay.style.color = '#fbbf24';
+    }
+  }, 1000);
+
+  function updateSlide(index) {
+    slides.forEach((s, i) => s.classList.toggle('active', i === index));
+    currentSlide = index;
+    slideNumDisplay.innerText = `${index + 1} / ${slides.length}`;
+    progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+    speakerText.innerText = slides[index].getAttribute('data-notes') || 'No speaker notes for this slide.';
+  }
+
+  function nextSlide() {
+    if (currentSlide < slides.length - 1) {
+      updateSlide(currentSlide + 1);
+    }
+  }
+
+  function prevSlide() {
+    if (currentSlide > 0) {
+      updateSlide(currentSlide - 1);
+    }
+  }
+
+  function toggleNotes() {
+    speakerPanel.classList.toggle('open');
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+      nextSlide();
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      prevSlide();
+    } else if (e.key === 's' || e.key === 'S') {
+      toggleNotes();
+    } else if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  });
+
+  // Initialize
+  updateSlide(0);
+</script>
+
+</body>
+</html>

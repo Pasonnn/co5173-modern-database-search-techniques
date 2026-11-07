@@ -7,68 +7,76 @@
   </defs>
 
   <rect width="850" height="560" fill="url(#bgChart)" rx="14" />
-  <text x="425" y="38" font-family="sans-serif" font-size="20" font-weight="700" fill="#f8fafc" text-anchor="middle">Empirical Benchmark Head-to-Head (N=10,000 Real Keys)</text>
-  <text x="425" y="60" font-family="sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">Comparison of Point Lookup Latency (µs, lower is better) vs. Memory Footprint (Bytes/Key, lower is better)</text>
+  <text x="425" y="38" font-family="sans-serif" font-size="20" font-weight="700" fill="#f8fafc" text-anchor="middle">Empirical Benchmark Head-to-Head: Cassandra vs. Elasticsearch</text>
+  <text x="425" y="60" font-family="sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">Evaluated over Real Datasets (N=10,000 World Cities Keys &amp; 1,655 Quotes Corpus)</text>
 
-  <!-- Left Chart: Point Lookup Latency (µs) -->
-  <g transform="translate(60, 100)">
-    <rect width="330" height="380" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
-    <text x="165" y="30" font-family="sans-serif" font-size="14" font-weight="700" fill="#38bdf8" text-anchor="middle">POINT LOOKUP LATENCY (µs)</text>
-    <text x="165" y="48" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">(Lower is Better)</text>
+  <!-- Left Chart: Ingestion Throughput (ops/sec) -->
+  <g transform="translate(60, 95)">
+    <rect width="330" height="200" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
+    <text x="165" y="28" font-family="sans-serif" font-size="13" font-weight="700" fill="#38bdf8" text-anchor="middle">INGESTION THROUGHPUT (ops/s)</text>
+    <text x="165" y="45" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">(Higher is Better)</text>
 
-    <!-- Bars -->
-    <!-- B+ Tree: 0.77 µs -->
-    <text x="30" y="100" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">B+ Tree</text>
-    <rect x="110" y="85" width="25" height="24" rx="4" fill="#38bdf8" />
-    <text x="145" y="102" font-family="sans-serif" font-size="11" font-weight="700" fill="#38bdf8">0.77 µs</text>
+    <!-- Cassandra LSM -->
+    <text x="25" y="90" font-family="sans-serif" font-size="11" font-weight="700" fill="#cbd5e1">Cassandra (LSM)</text>
+    <rect x="150" y="75" width="120" height="22" rx="4" fill="#fbbf24" />
+    <text x="280" y="91" font-family="sans-serif" font-size="11" font-weight="700" fill="#fbbf24">85,624</text>
 
-    <!-- Static RMI: 1.86 µs -->
-    <text x="30" y="160" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Static RMI</text>
-    <rect x="110" y="145" width="45" height="24" rx="4" fill="#a855f7" />
-    <text x="165" y="162" font-family="sans-serif" font-size="11" font-weight="700" fill="#c084fc">1.86 µs</text>
+    <!-- Elasticsearch Index -->
+    <text x="25" y="145" font-family="sans-serif" font-size="11" font-weight="700" fill="#cbd5e1">Elasticsearch</text>
+    <rect x="150" y="130" width="132" height="22" rx="4" fill="#38bdf8" />
+    <text x="288" y="146" font-family="sans-serif" font-size="11" font-weight="700" fill="#38bdf8">93,935</text>
 
-    <!-- Dynamic ALEX: 6.44 µs -->
-    <text x="30" y="220" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Dynamic ALEX</text>
-    <rect x="110" y="205" width="105" height="24" rx="4" fill="#10b981" />
-    <text x="225" y="222" font-family="sans-serif" font-size="11" font-weight="700" fill="#34d399">6.44 µs</text>
-
-    <!-- LSM-Tree: 16.03 µs -->
-    <text x="30" y="280" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">LSM-Tree</text>
-    <rect x="110" y="265" width="190" height="24" rx="4" fill="#f43f5e" />
-    <text x="308" y="282" font-family="sans-serif" font-size="10" font-weight="700" fill="#f43f5e">16.03 µs</text>
-
-    <text x="165" y="345" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">B+ Tree deterministic pointers deliver lowest</text>
-    <text x="165" y="362" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">point read latency via memory cache pinning.</text>
+    <text x="165" y="185" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Both systems achieve high throughput via append buffers</text>
   </g>
 
-  <!-- Right Chart: Memory Footprint (Bytes/Key) -->
-  <g transform="translate(460, 100)">
-    <rect width="330" height="380" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
-    <text x="165" y="30" font-family="sans-serif" font-size="14" font-weight="700" fill="#a855f7" text-anchor="middle">INDEX MEMORY FOOTPRINT (B/Key)</text>
-    <text x="165" y="48" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">(Lower is Better)</text>
+  <!-- Right Chart: Query Latency (µs) -->
+  <g transform="translate(460, 95)">
+    <rect width="330" height="200" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
+    <text x="165" y="28" font-family="sans-serif" font-size="13" font-weight="700" fill="#34d399" text-anchor="middle">QUERY LATENCY (µs)</text>
+    <text x="165" y="45" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">(Lower is Better)</text>
 
-    <!-- Bars -->
-    <!-- Static RMI: 1.4 B/key -->
-    <text x="30" y="100" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Static RMI</text>
-    <rect x="110" y="85" width="10" height="24" rx="4" fill="#a855f7" />
-    <text x="130" y="102" font-family="sans-serif" font-size="11" font-weight="700" fill="#c084fc">1.4 B/key (&gt;64x compression)</text>
+    <!-- Cassandra Point Hit -->
+    <text x="25" y="80" font-family="sans-serif" font-size="10" font-weight="700" fill="#cbd5e1">Cassandra Hit</text>
+    <rect x="140" y="68" width="20" height="18" rx="3" fill="#fbbf24" />
+    <text x="170" y="82" font-family="sans-serif" font-size="10" font-weight="700" fill="#fbbf24">5.42 µs</text>
 
-    <!-- B+ Tree: 90.1 B/key -->
-    <text x="30" y="160" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">B+ Tree</text>
-    <rect x="110" y="145" width="135" height="24" rx="4" fill="#38bdf8" />
-    <text x="255" y="162" font-family="sans-serif" font-size="11" font-weight="700" fill="#38bdf8">90.1 B/key</text>
+    <!-- Cassandra Miss (Bloom Fast-fail) -->
+    <text x="25" y="115" font-family="sans-serif" font-size="10" font-weight="700" fill="#cbd5e1">Cassandra Miss (Bloom)</text>
+    <rect x="140" y="103" width="14" height="18" rx="3" fill="#a78bfa" />
+    <text x="164" y="117" font-family="sans-serif" font-size="10" font-weight="700" fill="#a78bfa">3.42 µs</text>
 
-    <!-- Dynamic ALEX: 104.3 B/key -->
-    <text x="30" y="220" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">Dynamic ALEX</text>
-    <rect x="110" y="205" width="150" height="24" rx="4" fill="#10b981" />
-    <text x="270" y="222" font-family="sans-serif" font-size="11" font-weight="700" fill="#34d399">104.3 B/key</text>
+    <!-- ES Boolean AND -->
+    <text x="25" y="150" font-family="sans-serif" font-size="10" font-weight="700" fill="#cbd5e1">ES Boolean AND</text>
+    <rect x="140" y="138" width="55" height="18" rx="3" fill="#38bdf8" />
+    <text x="205" y="152" font-family="sans-serif" font-size="10" font-weight="700" fill="#38bdf8">20.36 µs</text>
 
-    <!-- LSM-Tree: 153.7 B/key -->
-    <text x="30" y="280" font-family="sans-serif" font-size="12" font-weight="700" fill="#cbd5e1">LSM-Tree</text>
-    <rect x="110" y="265" width="195" height="24" rx="4" fill="#f43f5e" />
-    <text x="165" y="315" font-family="sans-serif" font-size="11" font-weight="700" fill="#f43f5e">153.7 B/key (Bloom filters + SSTables)</text>
+    <!-- ES BM25 Ranked -->
+    <text x="25" y="185" font-family="sans-serif" font-size="10" font-weight="700" fill="#cbd5e1">ES BM25 Ranked</text>
+    <rect x="140" y="173" width="145" height="18" rx="3" fill="#f43f5e" />
+    <text x="295" y="187" font-family="sans-serif" font-size="10" font-weight="700" fill="#f43f5e">118.4 µs</text>
+  </g>
 
-    <text x="165" y="345" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">Static RMI eliminates child node pointers,</text>
-    <text x="165" y="362" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">compressing index footprint down to ~1 Byte/key.</text>
+  <!-- Bottom Box: Stress-Test Key Highlights -->
+  <g transform="translate(60, 315)">
+    <rect width="730" height="215" rx="8" fill="#111827" stroke="#475569" stroke-width="1.5" />
+    <text x="365" y="28" font-family="sans-serif" font-size="14" font-weight="700" fill="#f8fafc" text-anchor="middle">Key Stress-Test Findings &amp; RUM Insights</text>
+
+    <!-- Metric 1: Inverted Index Speedup -->
+    <rect x="25" y="45" width="330" height="70" rx="6" fill="#1e293b" stroke="#38bdf8" />
+    <text x="40" y="68" font-family="sans-serif" font-size="12" font-weight="700" fill="#38bdf8">71.5x Speedup in Lexical Search</text>
+    <text x="40" y="88" font-family="sans-serif" font-size="10" fill="#cbd5e1">Inverted Index Posting Intersection (35 µs)</text>
+    <text x="40" y="103" font-family="sans-serif" font-size="10" fill="#94a3b8">vs. Brute-force Linear Text Scan (2,515 µs)</text>
+
+    <!-- Metric 2: Cassandra Bloom Filter Pruning -->
+    <rect x="375" y="45" width="330" height="70" rx="6" fill="#1e293b" stroke="#a78bfa" />
+    <text x="390" y="68" font-family="sans-serif" font-size="12" font-weight="700" fill="#a78bfa">100% Negative SSTable Pruning</text>
+    <text x="390" y="88" font-family="sans-serif" font-size="10" fill="#cbd5e1">In-Memory Bloom Filter eliminates all disk seeks</text>
+    <text x="390" y="103" font-family="sans-serif" font-size="10" fill="#94a3b8">for absent keys, bounding Read Amplification (R)</text>
+
+    <!-- Memory Footprint Row -->
+    <rect x="25" y="130" width="680" height="65" rx="6" fill="#1e293b" stroke="#34d399" />
+    <text x="40" y="152" font-family="sans-serif" font-size="12" font-weight="700" fill="#34d399">Index Footprint Trade-off (Memory Amplification M):</text>
+    <text x="40" y="172" font-family="sans-serif" font-size="11" fill="#e2e8f0">• Cassandra: ~154 Bytes/key (MemTable + compact Bloom Filter of ~10 bits/key + fence pointers)</text>
+    <text x="40" y="187" font-family="sans-serif" font-size="11" fill="#e2e8f0">• Elasticsearch: ~2,293 Bytes/doc (Rich Term Dictionary FST + Posting lists + term frequencies)</text>
   </g>
 </svg>

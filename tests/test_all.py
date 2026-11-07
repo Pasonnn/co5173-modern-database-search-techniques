@@ -1,118 +1,94 @@
-"""Runnable test suite verifying all 5 modern database search indexing structures."""
+"""Runnable test suite verifying Cassandra (LSM-Tree) and Elasticsearch (Inverted Index)."""
 import os
 import sys
 
 # Ensure repository root is on sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import random
-from src.bplus_tree import BPlusTree
-from src.lsm_tree import LSMTree
-from src.inverted_index import InvertedIndex
-from src.learned_rmi import StaticRMI
-from src.learned_alex import DynamicALEX
+from src.lsm_tree import LSMTree, BloomFilter, TOMBSTONE
+from src.inverted_index import InvertedIndex, tokenize
 
 
-def test_bplus_tree():
-    tree = BPlusTree(order=4)
-    data = {i: f"val_{i}" for i in range(100)}
-    for k, v in data.items():
-        tree.put(k, v)
+def test_bloom_filter():
+    """Verify Bloom Filter behavior: zero false negatives and high true negative rate."""
+    bf = BloomFilter(size_bits=256, hash_count=3)
+    keys = [10, 20, 30, 40, 50]
+    for k in keys:
+        bf.add(k)
 
-    # Point lookups
-    for k, v in data.items():
-        assert tree.get(k) == v, f"B+ Tree lookup failed for {k}"
-    assert tree.get(999) is None
+    # Must contain all inserted keys (zero false negatives)
+    for k in keys:
+        assert bf.contains(k) is True, f"False negative on key {k}"
 
-    # Overwrite
-    tree.put(10, "new_val_10")
-    assert tree.get(10) == "new_val_10"
-
-    # Range scan
-    scan_res = tree.scan(20, 25)
-    assert [k for k, _ in scan_res] == list(range(20, 26))
+    # Non-existent keys should predominantly return False
+    absent_keys = [101, 102, 103, 104, 105, 999]
+    negatives = sum(1 for k in absent_keys if not bf.contains(k))
+    assert negatives >= len(absent_keys) * 0.8, "Bloom filter false positive rate unexpectedly high"
 
 
-def test_lsm_tree():
+def test_cassandra_lsm_tree():
+    """Verify Cassandra LSM-Tree mechanics: MemTable flush, SSTable fence index, Tombstones, Compaction."""
     lsm = LSMTree(memtable_threshold=8, compaction_trigger=3)
     data = {i: f"lsm_{i}" for i in range(50)}
     for k, v in data.items():
         lsm.put(k, v)
 
+    # Point lookups
     for k, v in data.items():
-        assert lsm.get(k) == v, f"LSM lookup failed for {k}"
-    assert lsm.get(999) is None
+        assert lsm.get(k) == v, f"LSM lookup failed for key {k}"
+    assert lsm.get(999) is None, "Non-existent key should return None"
 
-    # Deletion via Tombstone
+    # Overwrite semantics (newest entry in MemTable overrides SSTables)
+    lsm.put(10, "updated_val_10")
+    assert lsm.get(10) == "updated_val_10"
+
+    # Deletion via Tombstone marker
     lsm.delete(15)
-    assert lsm.get(15) is None
+    assert lsm.get(15) is None, "Deleted key should return None"
 
-    # Force compaction
+    # Trigger Major Compaction and verify tombstone purging
     lsm.compact()
     assert lsm.get(15) is None
     assert lsm.get(16) == "lsm_16"
+    assert lsm.get(10) == "updated_val_10"
 
-    # Range scan
+    # Multi-way merge range scan across MemTable and SSTables
     scan_res = lsm.scan(30, 35)
     assert [k for k, _ in scan_res] == list(range(30, 36))
 
+    # Memory footprint calculation returns positive integer
+    assert lsm.memory_footprint_bytes() > 0
 
-def test_inverted_index():
-    idx = InvertedIndex()
-    idx.index_document(1, "Modern database storage engines use B+ Tree for OLTP.", {"year": 2020})
-    idx.index_document(2, "LSM Tree provides high write ingestion throughput in RocksDB.", {"year": 2022})
-    idx.index_document(3, "Learned index models use CDF approximation to accelerate search.", {"year": 2024})
+
+def test_elasticsearch_inverted_index():
+    """Verify Elasticsearch Inverted Index: Tokenization, Posting lists, Boolean AND/OR, BM25 scoring."""
+    idx = InvertedIndex(k1=1.2, b=0.75)
+    idx.index_document(1, "Apache Cassandra provides high write ingestion throughput via LSM trees.", {"year": 2021, "cluster": "prod"})
+    idx.index_document(2, "Elasticsearch uses inverted index and Lucene segments for text retrieval.", {"year": 2023, "cluster": "analytics"})
+    idx.index_document(3, "Modern database systems balance write amplification and search latency.", {"year": 2025, "cluster": "prod"})
+
+    # Tokenizer check
+    assert tokenize("Hello, World! 123") == ["hello", "world", "123"]
 
     # Boolean search
-    assert idx.search_boolean(["tree", "engines"], mode="AND") == [1]
-    assert idx.search_boolean(["lsm", "database"], mode="OR") == [1, 2]
+    assert idx.search_boolean(["cassandra", "throughput"], mode="AND") == [1]
+    assert idx.search_boolean(["elasticsearch", "cassandra"], mode="OR") == [1, 2]
+    assert idx.search_boolean(["nonexistent_term"], mode="AND") == []
 
-    # BM25 ranking
-    bm25_res = idx.search_bm25("storage engines database")
+    # BM25 relevance scoring
+    bm25_res = idx.search_bm25("elasticsearch inverted index")
     assert len(bm25_res) > 0
-    assert bm25_res[0][0] == 1  # Doc 1 is top match
+    assert bm25_res[0][0] == 2  # Doc 2 is top ranked
 
-    # Range filtering
-    assert idx.range_filter("year", 2021, 2025) == [2, 3]
+    # Attribute range filtering (simulating BKD tree / doc values)
+    assert idx.range_filter("year", 2022, 2026) == [2, 3]
 
-
-def test_learned_rmi():
-    rmi = StaticRMI(num_leaf_models=8)
-    sorted_data = [(i * 2, f"rmi_{i}") for i in range(100)]
-    rmi.build(sorted_data)
-
-    for k, v in sorted_data:
-        assert rmi.get(k) == v, f"RMI lookup failed for {k}"
-    assert rmi.get(999) is None
-    assert rmi.get(3) is None  # Odd key not present
-
-    scan_res = rmi.scan(10, 20)
-    assert [k for k, _ in scan_res] == [10, 12, 14, 16, 18, 20]
-
-
-def test_learned_alex():
-    alex = DynamicALEX(leaf_max_capacity=16)
-    keys = list(range(100))
-    random.shuffle(keys)
-    for k in keys:
-        alex.put(k, f"alex_{k}")
-
-    for k in range(100):
-        assert alex.get(k) == f"alex_{k}", f"ALEX lookup failed for {k}"
-    assert alex.get(999) is None
-
-    # Overwrite
-    alex.put(42, "updated_alex")
-    assert alex.get(42) == "updated_alex"
-
-    scan_res = alex.scan(10, 15)
-    assert [k for k, _ in scan_res] == list(range(10, 16))
+    # Memory footprint calculation
+    assert idx.memory_footprint_bytes() > 0
 
 
 if __name__ == "__main__":
-    test_bplus_tree()
-    test_lsm_tree()
-    test_inverted_index()
-    test_learned_rmi()
-    test_learned_alex()
-    print("ALL 5 SEARCH TECHNIQUE SELF-CHECKS PASSED SUCCESSFULLY.")
+    test_bloom_filter()
+    test_cassandra_lsm_tree()
+    test_elasticsearch_inverted_index()
+    print("ALL TESTS PASSED: Apache Cassandra (LSM) & Elasticsearch (Inverted Index).")

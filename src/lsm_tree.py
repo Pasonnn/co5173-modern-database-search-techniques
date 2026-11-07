@@ -19,10 +19,10 @@ class BloomFilter:
         self.bits = [0] * size_bits
 
     def _hashes(self, key: int) -> list[int]:
-        key_bytes = str(key).encode("utf-8")
-        h1 = int(hashlib.md5(key_bytes).hexdigest(), 16)
-        h2 = int(hashlib.sha1(key_bytes).hexdigest(), 16)
-        return [(h1 + i * h2) % self.size for i in range(self.hash_count)]
+        # Fast double-hashing (Kirsch-Mitzenmacher technique used in Cassandra & Guava)
+        h1 = hash((key, 0x9E3779B9))
+        h2 = hash((key, 0x85EBCA6B)) | 1
+        return [abs(h1 + i * h2) % self.size for i in range(self.hash_count)]
 
     def add(self, key: int) -> None:
         for bit_idx in self._hashes(key):

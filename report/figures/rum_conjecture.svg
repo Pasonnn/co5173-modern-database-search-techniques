@@ -28,60 +28,46 @@
   <line x1="130" y1="520" x2="535" y2="330" stroke="#64748b" stroke-dasharray="4,4" stroke-width="1.5" />
   <line x1="670" y1="520" x2="265" y2="330" stroke="#64748b" stroke-dasharray="4,4" stroke-width="1.5" />
 
-  <!-- Vertices -->
-  <!-- Vertex R: Read Amplification -->
-  <circle cx="400" cy="140" r="14" fill="#38bdf8" filter="url(#shadow)" />
-  <circle cx="400" cy="140" r="7" fill="#0f172a" />
-  <rect x="250" y="85" width="300" height="42" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" filter="url(#shadow)" />
-  <text x="400" y="104" font-family="sans-serif" font-size="14" font-weight="700" fill="#38bdf8" text-anchor="middle">READ AMPLIFICATION (R)</text>
-  <text x="400" y="120" font-family="sans-serif" font-size="11" fill="#cbd5e1" text-anchor="middle">Bytes Read from Storage / Payload Bytes</text>
+  <!-- Vertex R: Read Overhead -->
+  <circle cx="400" cy="140" r="32" fill="#0284c7" stroke="#38bdf8" stroke-width="3" filter="url(#shadow)" />
+  <text x="400" y="146" font-family="sans-serif" font-size="20" font-weight="800" fill="#ffffff" text-anchor="middle">R</text>
+  <text x="400" y="96" font-family="sans-serif" font-size="15" font-weight="700" fill="#38bdf8" text-anchor="middle">READ OVERHEAD</text>
+  <text x="400" y="112" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">Point lookups, range scans, search latency</text>
 
-  <!-- Vertex U: Update Amplification -->
-  <circle cx="130" cy="520" r="14" fill="#f43f5e" filter="url(#shadow)" />
-  <circle cx="130" cy="520" r="7" fill="#0f172a" />
-  <rect x="20" y="545" width="230" height="42" rx="8" fill="#1e293b" stroke="#f43f5e" stroke-width="1.5" filter="url(#shadow)" />
-  <text x="135" y="564" font-family="sans-serif" font-size="13" font-weight="700" fill="#f43f5e" text-anchor="middle">UPDATE AMPLIFICATION (U)</text>
-  <text x="135" y="580" font-family="sans-serif" font-size="11" fill="#cbd5e1" text-anchor="middle">Bytes Written / Updated Payload</text>
+  <!-- Vertex U: Update Overhead -->
+  <circle cx="130" cy="520" r="32" fill="#d97706" stroke="#fbbf24" stroke-width="3" filter="url(#shadow)" />
+  <text x="130" y="526" font-family="sans-serif" font-size="20" font-weight="800" fill="#ffffff" text-anchor="middle">U</text>
+  <text x="130" y="572" font-family="sans-serif" font-size="15" font-weight="700" fill="#fbbf24" text-anchor="middle">UPDATE OVERHEAD</text>
+  <text x="130" y="590" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">Write amplification, random I/O writes</text>
 
-  <!-- Vertex M: Memory Amplification -->
-  <circle cx="670" cy="520" r="14" fill="#10b981" filter="url(#shadow)" />
-  <circle cx="670" cy="520" r="7" fill="#0f172a" />
-  <rect x="550" y="545" width="230" height="42" rx="8" fill="#1e293b" stroke="#10b981" stroke-width="1.5" filter="url(#shadow)" />
-  <text x="665" y="564" font-family="sans-serif" font-size="13" font-weight="700" fill="#10b981" text-anchor="middle">MEMORY AMPLIFICATION (M)</text>
-  <text x="665" y="580" font-family="sans-serif" font-size="11" fill="#cbd5e1" text-anchor="middle">Index DRAM Overhead / Raw Data</text>
+  <!-- Vertex M: Memory / Storage Overhead -->
+  <circle cx="670" cy="520" r="32" fill="#7c3aed" stroke="#a78bfa" stroke-width="3" filter="url(#shadow)" />
+  <text x="670" y="526" font-family="sans-serif" font-size="20" font-weight="800" fill="#ffffff" text-anchor="middle">M</text>
+  <text x="670" y="572" font-family="sans-serif" font-size="15" font-weight="700" fill="#a78bfa" text-anchor="middle">MEMORY OVERHEAD</text>
+  <text x="670" y="590" font-family="sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">Index space, Bloom filters, RAM cache</text>
 
-  <!-- Architecture Badges Mapped on RUM Axes -->
-  <!-- 1. B+ Tree -->
-  <g transform="translate(240, 260)" filter="url(#shadow)">
-    <rect width="130" height="52" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />
-    <text x="65" y="22" font-family="sans-serif" font-size="13" font-weight="700" fill="#38bdf8" text-anchor="middle">B+ TREE</text>
-    <text x="65" y="40" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Low R, Mod. M, High U</text>
+  <!-- Cassandra Box near Vertex U -->
+  <g transform="translate(50, 270)" filter="url(#shadow)">
+    <rect width="240" height="110" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="2" />
+    <text x="120" y="26" font-family="sans-serif" font-size="13" font-weight="700" fill="#fbbf24" text-anchor="middle">APACHE CASSANDRA (LSM)</text>
+    <text x="120" y="46" font-family="sans-serif" font-size="11" fill="#e2e8f0" text-anchor="middle">Prioritizes Update Ingestion (Low U)</text>
+    <text x="120" y="64" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">• Append-only MemTable & CommitLog</text>
+    <text x="120" y="80" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">• Trade-off: Read Amplification (R)</text>
+    <text x="120" y="96" font-family="sans-serif" font-size="10" fill="#38bdf8" text-anchor="middle">Mitigated via Bloom Filters & Compaction</text>
   </g>
 
-  <!-- 2. Static RMI -->
-  <g transform="translate(435, 260)" filter="url(#shadow)">
-    <rect width="135" height="52" rx="6" fill="#0f172a" stroke="#a855f7" stroke-width="2" />
-    <text x="67" y="22" font-family="sans-serif" font-size="13" font-weight="700" fill="#c084fc" text-anchor="middle">STATIC RMI</text>
-    <text x="67" y="40" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Ultra-Low M (1.4 B/k), Low R</text>
+  <!-- Elasticsearch Box near Vertex R & M -->
+  <g transform="translate(510, 270)" filter="url(#shadow)">
+    <rect width="240" height="110" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2" />
+    <text x="120" y="26" font-family="sans-serif" font-size="13" font-weight="700" fill="#38bdf8" text-anchor="middle">ELASTICSEARCH (INVERTED)</text>
+    <text x="120" y="46" font-family="sans-serif" font-size="11" fill="#e2e8f0" text-anchor="middle">Prioritizes Complex Search (Low R)</text>
+    <text x="120" y="64" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">• Instant posting list intersection & BM25</text>
+    <text x="120" y="80" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">• Trade-off: Higher Memory (M) & Update (U)</text>
+    <text x="120" y="96" font-family="sans-serif" font-size="10" fill="#a78bfa" text-anchor="middle">FST Term Dict + Segment Merge Overhead</text>
   </g>
 
-  <!-- 3. LSM-Tree -->
-  <g transform="translate(180, 440)" filter="url(#shadow)">
-    <rect width="135" height="52" rx="6" fill="#0f172a" stroke="#f43f5e" stroke-width="2" />
-    <text x="67" y="22" font-family="sans-serif" font-size="13" font-weight="700" fill="#f43f5e" text-anchor="middle">LSM-TREE</text>
-    <text x="67" y="40" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Ultra-Low U, Higher R</text>
-  </g>
-
-  <!-- 4. Dynamic ALEX -->
-  <g transform="translate(480, 440)" filter="url(#shadow)">
-    <rect width="135" height="52" rx="6" fill="#0f172a" stroke="#10b981" stroke-width="2" />
-    <text x="67" y="22" font-family="sans-serif" font-size="13" font-weight="700" fill="#34d399" text-anchor="middle">DYNAMIC ALEX</text>
-    <text x="67" y="40" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Low R, Mod. U (Gaps)</text>
-  </g>
-
-  <!-- Inverted Index Indicator -->
-  <g transform="translate(290, 365)" filter="url(#shadow)">
-    <rect width="220" height="34" rx="6" fill="#1e1e38" stroke="#fbbf24" stroke-width="1.5" />
-    <text x="110" y="21" font-family="sans-serif" font-size="11" font-weight="600" fill="#fbbf24" text-anchor="middle">INVERTED INDEX: Lexical / High M</text>
-  </g>
+  <!-- Center Convergence Point -->
+  <circle cx="400" cy="385" r="8" fill="#f43f5e" />
+  <text x="400" y="415" font-family="sans-serif" font-size="12" font-weight="700" fill="#f43f5e" text-anchor="middle">No Universal Engine</text>
+  <text x="400" y="432" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Architectural specialization dictates performance bounds</text>
 </svg>

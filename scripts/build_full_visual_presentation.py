@@ -45,9 +45,9 @@ def build_html_presentation(slides, output_path):
 def build_markdown_report(slides, output_path):
     md_lines = [
         "# CO5173 — Storage Engine Duality: Cassandra (LSM) vs Elasticsearch (Inverted Index)",
-        "## Complete 29-Slide Presentation Content & Bilingual Speaker Transcripts",
+        "## Complete 23-Slide Presentation Content & Bilingual Speaker Transcripts",
         "",
-        "> **Presentation Pacing:** 29 bite-sized visual slides designed for a 15-minute presentation (~30 seconds per slide).",
+        "> **Presentation Pacing:** 23 bite-sized visual slides designed for a 15-minute presentation (~39 seconds per slide).",
         "> **Bilingual Delivery:** Full scripts provided in both English (EN) and Vietnamese (VI).",
         "",
         "---",

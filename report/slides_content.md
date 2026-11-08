@@ -1,393 +1,487 @@
-# PRESENTATION SLIDES: SPECIALIZED MODERN DATABASE SEARCH ENGINES
-## An Architectural, Theoretical, and Empirical Analysis: Apache Cassandra (LSM) vs. Elasticsearch (Inverted Index)
+# CO5173 — Storage Engine Duality: Cassandra (LSM) vs Elasticsearch (Inverted Index)
+## Complete 29-Slide Presentation Content & Bilingual Speaker Transcripts
 
-**Course:** Data Engineering (CO5173) – Ho Chi Minh City University of Technology (HCMUT)  
-**Instructor:** Assoc. Prof. Tran Minh Quang  
-**Authors:** Nguyen Dinh Hoang Son (ID: `2670362`) & Nguyen Doan Phuc An (ID: `2670249`)  
-**Format:** 16 Progressive Animation Slides + 2 Interactive Live Terminal Demo Stops  
-**Target Duration:** Exactly 15 Minutes (Strictly Time-Calibrated)  
+> **Presentation Pacing:** 29 bite-sized visual slides designed for a 15-minute presentation (~30 seconds per slide).
+> **Bilingual Delivery:** Full scripts provided in both English (EN) and Vietnamese (VI).
 
 ---
 
-### PRESENTATION TIMING BREAKDOWN (15:00 TOTAL)
-1. **Part 1: Theoretical Foundation & Divergence** — Slides 1 to 2 *(2:00)*
-2. **Part 2: Apache Cassandra Architecture (Step-by-Step Animation)** — Slides 3 to 7 *(3:15)*
-3. **Part 3: 🛑 LIVE TERMINAL DEMO 1 (Cassandra Engine)** — Slide 8 *(2:00)*
-4. **Part 4: Elasticsearch Architecture (Step-by-Step Animation)** — Slides 9 to 13 *(3:15)*
-5. **Part 5: 🛑 LIVE TERMINAL DEMO 2 (Elasticsearch & BM25)** — Slide 14 *(2:00)*
-6. **Part 6: Empirical Benchmark Synthesis & CQRS Conclusion** — Slides 15 to 16 *(2:30)*
+### Slide 01: Storage Engine Duality
+**Section:** `00 Introduction` | **Badge:** `Cover Slide`  
+**Subtitle:** *Apache Cassandra (LSM-Tree) vs. Elasticsearch (Inverted Index) — A Comparative Study*  
+
+#### Key Points:
+- Final Project for CO5173 Advanced Data Engineering, HCMUT Master of Computer Science.
+- Compares two opposite storage designs: write-optimized LSM-Trees vs search-optimized Inverted Indexes.
+- Demonstrates why modern systems need both engines using clear analogies and empirical proofs.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Good day, professors and fellow students. Welcome to our presentation for CO5173 Advanced Data Engineering. Today, we explore the storage engine duality between Apache Cassandra and Elasticsearch. In modern data systems, no single database can do everything well. Over the next 15 minutes, we will explain why traditional databases struggle at scale, how Cassandra and Elasticsearch solve these problems with opposite designs, and show live benchmark proof from our code."
+- **Tiếng Việt (VI):** "Kính chào quý Thầy Cô và các bạn học viên cao học. Chào mừng quý vị đến với buổi báo cáo đồ án môn CO5173 Kỹ nghệ Dữ liệu Nâng cao. Hôm nay, chúng em xin trình bày về tính nhị nguyên giữa Apache Cassandra và Elasticsearch. Trong hệ thống dữ liệu lớn, không một cơ sở dữ liệu nào hoàn hảo cho mọi tác vụ. Trong 15 phút tới, chúng ta sẽ cùng tìm hiểu vì sao database truyền thống gặp giới hạn, cách Cassandra và Elasticsearch giải quyết qua hai thiết kế đối lập, và chứng minh bằng số liệu thực nghiệm."
 
 ---
 
-## PART 1: THEORETICAL FOUNDATION & DIVERGENCE
+### Slide 02: Presentation Roadmap: The 4 Acts
+**Section:** `00 Introduction` | **Badge:** `Roadmap`  
+**Subtitle:** *A Guided 15-Minute Tour Through Storage Mechanics & Empirical Evidence*  
 
-### SLIDE 1: Title & Presentation Scope
-- **Time Allocation:** 0:45 min (Elapsed: 0:00 – 0:45)
-- **Visuals:** Title banner, HCMUT CSE logo, Author IDs.
-- **Slide Content:**
-  - **Specialized Modern Database Search Engines**
-  - *Apache Cassandra (LSM) vs. Elasticsearch (Inverted Index)*
-  - **Presenters:** Nguyen Dinh Hoang Son (`2670362`) & Nguyen Doan Phuc An (`2670249`)
-  - **Key Premise:** General-purpose tree indexes (B+ Tree) fail under modern workload asymmetry. Storage engines must physically specialize.
-- **Speaker Script (45s):**
-  > "Good morning, Professor Tran Minh Quang and classmates. Today we present 'Specialized Modern Database Search Engines.' For decades, relational databases relied on B+ Trees as the default answer for data access. But modern data systems have fragmented: high-velocity append workloads like IoT telemetry demand completely different storage physics than multi-attribute text retrieval across terabytes of logs. 
-  > Today, we examine the two dominant specialized search paradigms: Apache Cassandra's Log-Structured Merge-Tree and Elasticsearch's Inverted Index. We walk through their architectures step-by-step like an animation, pause for live code demonstrations, and synthesize their real empirical trade-offs."
+#### Key Points:
+- Calibrated strictly for a 15-minute presentation (~30 seconds per slide).
+- Follows a logical story arc: The Crisis -> Solution 1 (Cassandra) -> Solution 2 (Elasticsearch) -> Synthesis.
+- Every theoretical concept is paired with an intuitive real-world analogy and runnable code.
 
----
-
-### SLIDE 2: The Governing Law: The RUM Conjecture
-- **Time Allocation:** 1:15 min (Elapsed: 0:45 – 2:00)
-- **Visuals:** Vector graphic: `report/figures/rum_conjecture.svg` (The RUM Triangle).
-- **Slide Content:**
-  - **The Storage Trilemma (Athanassoulis et al., EDBT 2016):**
-    - **Read Amplification ($R$):** Physical bytes read / logical bytes returned.
-    - **Update Amplification ($U$):** Physical bytes written / logical bytes modified.
-    - **Memory Amplification ($M$):** Index storage footprint / base data size.
-  - **The Trade-Off Bound:** You can optimize at most two overheads; the third inevitably degrades.
-  - **Cassandra:** Minimizes **$U$** (append-only) $\to$ compromises **$R$** (multi-SSTable search).
-  - **Elasticsearch:** Minimizes **$R$** (instant text search) $\to$ compromises **$M$** (FST memory) & **$U$** (re-indexing).
-- **Speaker Script (75s):**
-  > "Database engine design is governed by the RUM Conjecture, formulated in 2016. Just as the CAP theorem governs distributed consensus, RUM proves you cannot simultaneously minimize Read Amplification, Update Amplification, and Memory Amplification.
-  > In a traditional B+ Tree, updating one 64-byte row rewrites an entire 16 KB page, causing heavy random I/O and high Update Amplification U.
-  > To eliminate random disk writes, Apache Cassandra buffers writes in RAM and writes sequential immutable runs, minimizing Update Overhead U at the expense of higher Read Amplification R.
-  > In contrast, Elasticsearch solves multi-attribute queries by precomputing inverted posting lists in memory, achieving near-zero Read Overhead R for complex text, but paying with substantial Memory Overhead M.
-  > Neither engine is universally superior—they occupy opposite ends of the RUM triangle."
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Here is our 15-minute roadmap organized into four clear acts. In Act 1, we look at the storage crisis: why traditional databases struggle with heavy writes and text searches. In Act 2, we explain Cassandra and LSM trees through our desk notepad analogy. In Act 3, we explain Elasticsearch and Inverted Indexes using the book index analogy. Finally, in Act 4, we examine our empirical benchmark results and show how to combine both systems in production using the CQRS pattern."
+- **Tiếng Việt (VI):** "Đây là lộ trình 15 phút của nhóm qua 4 phần rõ ràng. Trong Phần 1, ta tìm hiểu cuộc khủng hoảng lưu trữ khi database truyền thống gặp tải ghi cao và tìm kiếm từ ngữ. Trong Phần 2, ta khám phá Cassandra và LSM-Tree qua hình ảnh cuốn sổ tay. Trong Phần 3, ta phân tích Elasticsearch và Chỉ mục đảo qua hình ảnh mục lục tra cứu cuối sách. Cuối cùng, trong Phần 4, ta đối chiếu các kết quả đo đạc thực nghiệm và cách phối hợp cả hai trong thực tế bằng mô hình CQRS."
 
 ---
 
-## PART 2: APACHE CASSANDRA ARCHITECTURE (STEP-BY-STEP ANIMATION)
+### Slide 03: Traditional Databases: The Overwrite Trap
+**Section:** `01 Storage Crisis` | **Badge:** `Problem 1`  
+**Subtitle:** *How Changing a 50-Byte Record Forces a 16,384-Byte Disk Rewrite*  
 
-### SLIDE 3: Cassandra Storage Hierarchy Overview
-- **Time Allocation:** 0:45 min (Elapsed: 2:00 – 2:45)
-- **Visuals:** Full Architecture Overview: `report/figures/lsm_tree_architecture.svg`.
-- **Slide Content:**
-  - **Philosophy:** Defer sorting, eliminate in-place random writes, convert disk I/O into sequential streams.
-  - **In-Memory Tier (RAM):**
-    - `CommitLog`: Sequential WAL on disk for crash durability ($O(1)$ disk append).
-    - `MemTable`: Concurrent lock-free SkipList in DRAM ($O(\log N)$ point writes).
-  - **Persistent Tier (Disk):**
-    - `Immutable SSTables`: Sorted data runs with in-memory Bloom Filters and Sparse Fence Indexes.
-    - `Compaction Engine`: Asynchronous multi-way merge sort.
-- **Speaker Script (45s):**
-  > "Let us look at Apache Cassandra's storage architecture. Its core philosophy is simple: never update data in place.
-  > Instead of seeking randomly on disk, Cassandra partitions storage into an in-memory tier and an immutable persistent tier.
-  > Mutations enter a sequential CommitLog on disk for durability and a MemTable SkipList in RAM.
-  > As the MemTable fills, it flushes to disk as immutable Sorted String Tables (SSTables).
-  > Let us now step through exactly what happens during writes, flushes, reads, and deletes across the next four animation frames."
+#### Key Points:
+- Traditional databases use B+ Trees that store data in fixed-size blocks called pages (typically 16 KB).
+- Updating even one small field requires rewriting the entire 16 KB page, causing ~327× write amplification.
+- This in-place update design creates random disk jumping and caps write ingestion throughput.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "To understand why Cassandra was invented, we first look at the overwrite trap in traditional relational databases like MySQL or PostgreSQL. These systems organize data into fixed 16-kilobyte pages using B+ Trees. When you update a 50-byte user status, the database cannot write just 50 bytes. It must rewrite all 16,384 bytes back to disk. That is a 327-fold write amplification, creating random disk jumping and choking write performance."
+- **Tiếng Việt (VI):** "Để hiểu vì sao Cassandra ra đời, trước hết ta nhìn vào cái bẫy ghi đè của các database truyền thống như MySQL hay PostgreSQL. Chúng tổ chức dữ liệu theo các trang cố định 16 KB qua cấu trúc B+ Tree. Khi bạn sửa một dòng trạng thái 50 byte, hệ quản trị không thể chỉ ghi 50 byte, mà buộc phải ghi lại toàn bộ 16.384 byte xuống đĩa. Hệ số khuếch đại ghi gấp 327 lần này sinh ra nhảy đĩa ngẫu nhiên và làm nghẽn luồng ghi."
 
 ---
 
-### SLIDE 4: [ANIMATION FRAME 1/4] Cassandra Write Path
-- **Time Allocation:** 0:35 min (Elapsed: 2:45 – 3:20)
-- **Visual Animation Frame:**
-```
-Client Mutation: put(k, v)
-       │
-       ├──► [1. Append Sequential] ────► CommitLog (Disk WAL: 0 seeks, O(1))
-       │
-       └──► [2. Insert Sorted]     ────► MemTable (Concurrent SkipList in RAM)
-                                         Status: Client ACK immediately!
-                                         (Zero random disk I/O, Zero page locking)
-```
-- **Slide Content:**
-  - **Dual-write mechanics:** Synchronous append to CommitLog + concurrent insert to MemTable.
-  - **Latency:** Microsecond response time in DRAM; no disk head seeks.
-- **Speaker Script (35s):**
-  > "Frame 1: A client mutation arrives. Cassandra does two things in parallel: it appends the write sequentially to the CommitLog for crash safety, and inserts it into the sorted MemTable in RAM. The client receives an instant acknowledgment. Notice: zero random disk I/O, zero page locking, and zero page splitting."
+### Slide 04: Traditional Databases: The Full-Scan Trap
+**Section:** `01 Storage Crisis` | **Badge:** `Problem 2`  
+**Subtitle:** *Why Searching for Words Using Wildcards Bypasses Normal Indexes*  
+
+#### Key Points:
+- B+ Tree indexes only work for exact matches or prefix searches; leading wildcards bypass them entirely.
+- Forces a full table scan across millions of disk rows, consuming massive CPU and I/O bandwidth.
+- Relational databases cannot calculate relevance scores to rank which documents are the best answers.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "The second major limit of traditional databases is text search. If you query with a wildcard like WHERE text LIKE '%database%', the leading percentage sign bypasses the B+ Tree index completely. The database is forced to perform a full table scan, reading every row from disk. This is slow, wastes system resources, and cannot rank which document is the most relevant answer."
+- **Tiếng Việt (VI):** "Giới hạn lớn thứ hai của database truyền thống là tìm kiếm văn bản. Khi bạn tìm kiếm với ký tự đại diện như LIKE '%database%', dấu phần trăm đứng đầu làm cây B+ mất tác dụng. Hệ thống buộc phải quét toàn bộ bảng, đọc từng dòng trên đĩa. Cách này rất chậm, lãng phí tài nguyên và hoàn toàn không thể xếp hạng xem tài liệu nào là câu trả lời tốt nhất."
 
 ---
 
-### SLIDE 5: [ANIMATION FRAME 2/4] MemTable Threshold Flush
-- **Time Allocation:** 0:35 min (Elapsed: 3:20 – 3:55)
-- **Visual Animation Frame:**
-```
-MemTable reaches Capacity (e.g., 128 MB)
-       │
-       ▼ [Freeze & Stream Sequential I/O]
-┌────────────────────────────────────────────────────────┐
-│ Immutable SSTable-0 Created on Disk                    │
-│  ├─ Bloom Filter   : Bit array hashed via Murmur3/KM   │
-│  ├─ Sparse Index   : Fence keys sampled every 128 keys │
-│  └─ Data File      : Strictly sorted key-value records │
-└────────────────────────────────────────────────────────┘
-MemTable resets to empty; CommitLog segment truncated.
-```
-- **Slide Content:**
-  - **Sequential Disk Flush:** Converts random memory mutations into one contiguous disk stream.
-  - **Immutability:** SSTables are never rewritten in place; concurrency requires zero read locks.
-- **Speaker Script (35s):**
-  > "Frame 2: When the MemTable hits its threshold, Cassandra freezes it and streams it sequentially to disk as an immutable SSTable. The SSTable contains three files: the sorted Data file, a Sparse Fence Index, and an in-memory Bloom filter. The MemTable resets, and the old CommitLog is truncated."
+### Slide 05: The Writer vs. Reader Conflict
+**Section:** `01 Storage Crisis` | **Badge:** `The Conflict`  
+**Subtitle:** *Why One Storage Engine Cannot Be the Fastest at Both Writing and Searching*  
+
+#### Key Points:
+- Writing at maximum speed requires minimal upfront work: simply appending sequential bytes.
+- Searching in microseconds requires heavy upfront work: tokenizing words and pre-building sorted catalogs.
+- Trying to perform both tasks on a single storage layout forces both operations to slow down.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Here is the fundamental conflict in database design. To write at maximum hardware speed, you must do almost zero work when saving data: just append bytes sequentially. But to search across millions of documents in microseconds, you must dissect every word upfront into sorted lists. Doing both on the same storage structure is physically impossible."
+- **Tiếng Việt (VI):** "Đây là mâu thuẫn cốt lõi trong thiết kế cơ sở dữ liệu. Muốn ghi ở tốc độ phần cứng tối đa, bạn phải làm ít việc nhất lúc ghi: chỉ ghi nối đuôi tuần tự. Nhưng muốn tìm kiếm triệu tài liệu trong vài micro-giây, bạn phải bóc tách từng từ ngữ thành các danh sách sắp xếp sẵn. Làm cả hai trên cùng một cấu trúc lưu trữ là điều bất khả thi về mặt vật lý."
 
 ---
 
-### SLIDE 6: [ANIMATION FRAME 3/4] Read Path Pruning & Fast-Fail
-- **Time Allocation:** 0:40 min (Elapsed: 3:55 – 4:35)
-- **Visual Animation Frame:**
-```
-Query: get(Key K)
-  │
-  ├─► [1. Check MemTable] ──(Hit)──► Return Value (0 disk reads)
-  │         │ (Miss)
-  │         ▼
-  └─► [2. Probe SSTables (Newest to Oldest)]
-        │
-        ├─► [Bloom Filter Test]
-        │     ├─► Any Bit == 0? ──► FAST-FAIL PRUNED! (0 Disk Seeks)
-        │     └─► All Bits == 1? (Potential Hit)
-        │           │
-        │           ▼
-        └─► [Sparse Fence Index] ──(Binary Search)──► Localized Data Block Seek
-```
-- **Slide Content:**
-  - **Bloom Filter Double-Hashing:** $g_i(x) = (h_1(x) + i \cdot h_2(x)) \pmod m$.
-  - Sized at $\sim 10\ \text{bits/key}$ for $1\%$ false positive rate.
-  - **Pruning Effect:** $99\%$ of absent key lookups are rejected in RAM before touching disk!
-- **Speaker Script (40s):**
-  > "Frame 3: How does Cassandra read from multiple SSTables without slow disk scans?
-  > It first checks the MemTable in RAM. If missed, it probes each SSTable's Bloom Filter. If any bit is zero, the key is mathematically guaranteed not to exist—pruning the entire SSTable with zero disk I/O!
-  > If the filter indicates a potential match, Cassandra binary searches the sparse fence index in RAM to pinpoint the exact disk block."
+### Slide 06: The Storage Law: The RUM Conjecture
+**Section:** `01 Storage Crisis` | **Badge:** `Storage Law`  
+**Subtitle:** *You Can Only Optimize Two: Read (R), Update (U), or Memory (M)*  
+
+#### Key Points:
+- The RUM Conjecture (Harvard/BU) proves that minimizing two database costs inevitably worsens the third cost.
+- Cassandra prioritizes low update work and low memory usage, deferring sorting to background threads.
+- Elasticsearch prioritizes instant search speed, pre-building rich catalogs at the cost of high memory.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "This physical limit was proven by researchers at Harvard and Boston University as the RUM Conjecture. You can optimize at most two corners of the triangle: Read overhead, Update overhead, or Memory overhead. Cassandra minimizes Update and Memory costs, while Elasticsearch minimizes Read overhead at the expense of high memory consumption."
+- **Tiếng Việt (VI):** "Giới hạn vật lý này được chứng minh qua Giả thuyết RUM bởi các nhà nghiên cứu Đại học Harvard và Boston. Bạn chỉ có thể tối ưu tối đa hai trong ba góc của tam giác: Chi phí Đọc (R), Chi phí Ghi (U), hoặc Bộ nhớ RAM (M). Cassandra tối ưu Ghi và Bộ nhớ, trong khi Elasticsearch tối ưu tốc độ Đọc và chấp nhận tiêu tốn nhiều dung lượng RAM."
 
 ---
 
-### SLIDE 7: [ANIMATION FRAME 4/4] Tombstones & Compaction
-- **Time Allocation:** 0:40 min (Elapsed: 4:35 – 5:15)
-- **Visual Animation Frame:**
-```
-1. Deletion: delete(k) ──► Writes TOMBSTONE(k, timestamp) into MemTable
-   (Past versions in older SSTables remain masked until compaction)
+### Slide 07: LSM Analogy: The Desk Notepad
+**Section:** `02 LSM & Cassandra` | **Badge:** `Analogy Step 1`  
+**Subtitle:** *Step 1: Saving Writes into Fast RAM Without Touching Slow Disk*  
 
-2. Asynchronous Multi-Way Merge Compaction:
-   [ SSTable-0: k1, k2, k3 (v1) ] ┐
-   [ SSTable-1: k3 (v2), k4     ] ┼─► [ Multi-Way Merge ] ─► [ Compacted SSTable: ]
-   [ SSTable-2: TOMBSTONE(k2)   ] ┘   (Purge k2, pick k3 v2)   [ k1, k3 (v2), k4   ]
-```
-- **Slide Content:**
-  - **Tombstones:** Immutable deletes represented as timestamped markers.
-  - **Compaction:** $O(N)$ streaming merge sort reconciles versions, purges expired tombstones, and bounds Read Amplification ($R$).
-- **Speaker Script (40s):**
-  > "Frame 4: Because files are immutable, deletes cannot erase bytes from older SSTables. Instead, Cassandra writes a Tombstone with a timestamp.
-  > In the background, Compaction performs an $O(N)$ multi-way merge sort across overlapping SSTables. It reconciles duplicate versions, purges dead tombstones, and emits a single, compacted SSTable—reclaiming disk space."
+#### Key Points:
+- When a write arrives, Cassandra never updates data on disk immediately.
+- It writes to an active, sorted in-memory buffer called the MemTable.
+- For crash protection, it appends a record sequentially to the on-disk CommitLog.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Imagine working at a busy library intake desk. When new books arrive, you don't run to the shelves to insert them one by one. You simply jot the titles down on your desk notepad. In Cassandra, this notepad is the MemTable in RAM. For crash safety, an assistant logs the title sequentially into an append-only commit log on disk. The write returns instantly in microseconds."
+- **Tiếng Việt (VI):** "Hãy tưởng tượng bạn là thủ thư ở một thư viện đông đúc. Khi sách mới trả về, bạn không chạy đi tìm từng kệ để nhét vào. Bạn chỉ ghi nhanh tiêu đề vào cuốn sổ tay trên bàn làm việc. Trong Cassandra, cuốn sổ tay này chính là MemTable trên RAM. Để phòng sự cố mất điện, hệ thống ghi nối đuôi một dòng vào CommitLog trên đĩa. Giao dịch hoàn tất lập tức trong vài phần triệu giây."
 
 ---
 
-### SLIDE 8: 🛑 LIVE CODE DEMO STOP 1: Cassandra Engine
-- **Time Allocation:** 2:00 min (Elapsed: 5:15 – 7:15)
-- **Visuals:** Full-screen terminal session running `demo.py`.
-- **Slide Content:**
-  - **DEMO STOP 1: APACHE CASSANDRA IN ACTION**
-  - **Terminal Command:**
-    ```bash
-    python3 demo.py --cassandra
-    ```
-  - **Live Execution Checkpoints:**
-    1. *Step 1:* Ingestion into MemTable & CommitLog.
-    2. *Step 2:* Capacity threshold trigger $\to$ SSTable-0 flush with Bloom filter generation.
-    3. *Step 3:* Existing key point hit ($5.4\ \mu\text{s}$) vs. Absent key Bloom filter **Fast-Fail** ($3.4\ \mu\text{s}$, 0 disk reads).
-    4. *Step 4:* Tombstone deletion & Multi-way merge compaction permanently purging dead keys.
-- **Speaker Script (120s):**
-  > "Now, let us switch directly to the terminal and see Cassandra's storage engine execute live.
-  > *(Switch to terminal and run `python3 demo.py --cassandra`)*
-  > In Step 1, we insert records into our MemTable. You can see the keys ordered in RAM.
-  > In Step 2, our fourth key triggers the threshold. Notice SSTable-0 is created on disk, generating fence pointers and Bloom filter bits.
-  > In Step 3, watch the read path: when querying existing key 102, the Bloom filter hits and retrieves the value. But look at absent key 999: the Bloom filter calculates hash bits, discovers a zero, and immediately returns false. The SSTable data file is never opened!
-  > In Step 4, we delete key 102. It writes a Tombstone. When we trigger multi-way merge compaction, SSTable-0 and SSTable-1 merge, key 102 is permanently purged, and disk space is recovered.
-  > Let us return to our slides and explore Elasticsearch."
+### Slide 08: LSM Analogy: Staple & Shelf
+**Section:** `02 LSM & Cassandra` | **Badge:** `Analogy Step 2`  
+**Subtitle:** *Step 2: Freezing the Filled Notepad into an Immutable Disk File*  
+
+#### Key Points:
+- When the MemTable fills up, it is frozen and written to disk as a sorted file called an SSTable.
+- Writing an SSTable to disk is 100% sequential, maximizing hardware disk write bandwidth.
+- SSTables are immutable (read-only); they are never edited or overwritten in place.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "When your desk notepad is full, you don't erase it. You tear out the page, staple it into a neat sorted booklet, and place it on the library shelf. In Cassandra, this is an SSTable. Because SSTables are immutable, multiple threads can read them without any locking contention, and writing them to disk is a pure sequential stream at maximum disk bandwidth."
+- **Tiếng Việt (VI):** "Khi cuốn sổ tay trên bàn đã đầy, bạn không xóa đi mà xé trang, bấm lại thành một tập sách mỏng đã xếp thứ tự rồi đặt lên kệ. Trong Cassandra, đó là SSTable. Vì SSTable là bất biến (immutable), nhiều luồng có thể đọc đồng thời mà không sợ tranh chấp khóa, và việc ghi xuống đĩa diễn ra hoàn toàn tuần tự với tốc độ tối đa của phần cứng."
 
 ---
 
-## PART 3: ELASTICSEARCH ARCHITECTURE (STEP-BY-STEP ANIMATION)
+### Slide 09: LSM Analogy: Background Compaction
+**Section:** `02 LSM & Cassandra` | **Badge:** `Analogy Step 3`  
+**Subtitle:** *Step 3: Merging Multiple Disk Files and Permanently Erasing Deleted Data*  
 
-### SLIDE 9: Elasticsearch & Inverted Index Overview
-- **Time Allocation:** 0:45 min (Elapsed: 7:15 – 8:00)
-- **Visuals:** Full Architecture Overview: `report/figures/inverted_index_architecture.svg`.
-- **Slide Content:**
-  - **Philosophy:** Invert the relationship: instead of `Doc -> [Terms]`, store `Term -> [Sorted DocIDs]`.
-  - **Target Workload:** Arbitrary multi-attribute search, log analytics, and relevance ranking.
-  - **Core Components:**
-    - `Analysis Pipeline`: Character Filter $\to$ Tokenizer $\to$ Token Filters (Stemming).
-    - `Term Dictionary`: In-memory Finite State Transducer (FST) with prefix/suffix compression.
-    - `Posting Lists`: Sorted document IDs with Skip Lists and term frequencies ($tf$).
-    - `BM25 Scoring`: Probabilistic relevance ranking with length normalization.
-- **Speaker Script (45s):**
-  > "Now we transition to Elasticsearch and Apache Lucene.
-  > Why can't Cassandra or MySQL handle search? Because they map documents to columns. To search 'distributed consensus' in millions of log rows, a relational database must scan every single line of text.
-  > Elasticsearch solves this by inverting the relationship: creating a dictionary of all unique terms, mapping each word to the sorted list of documents containing it.
-  > Let us trace a document through the analysis pipeline, FST dictionary, skip lists, and BM25 scoring across the next four animation frames."
+#### Key Points:
+- Deletions in Cassandra are inserts of a special Tombstone marker (no in-place file modifications).
+- Over time, multiple SSTables accumulate on disk; background compaction merges them cleanly.
+- Compaction reclaims disk space by purging superseded values and tombstones.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "As days go by, your library shelf accumulates dozens of booklets with obsolete notes and cross-outs. An assistant works in the background, reading multiple sorted booklets at once, taking the newest entry for each book, and copying them into a single clean volume. In Cassandra, this is Compaction. Deletions are handled by writing Tombstones, which compaction permanently purges."
+- **Tiếng Việt (VI):** "Theo thời gian, trên kệ tích tụ hàng chục tập sách mỏng chứa cả những ghi chú cũ và các dòng bị gạch xóa. Một người trợ lý sẽ làm việc ngầm: đọc đồng thời các tập sách đã xếp thứ tự, giữ lại bản ghi mới nhất và chép vào một cuốn sách lớn duy nhất. Trong Cassandra, đó là quá trình Compaction. Việc xóa dữ liệu được thực hiện bằng cách ghi một thẻ Tombstone, và Compaction sẽ tiêu hủy vĩnh viễn thẻ này."
 
 ---
 
-### SLIDE 10: [ANIMATION FRAME 1/4] Text Analysis Pipeline
-- **Time Allocation:** 0:35 min (Elapsed: 8:00 – 8:35)
-- **Visual Animation Frame:**
-```
-Raw Text: "Apache Cassandra provides high write throughput with LSM trees!"
-  │
-  ├──► [1. Char Filter]   ──► Strips HTML tags, decodes special symbols
-  │
-  ├──► [2. Tokenizer]     ──► Splits on whitespace/punctuation:
-  │                           ["Apache", "Cassandra", "provides", "high", ...]
-  │
-  └──► [3. Token Filters] ──► Lowercasing: "Cassandra" -> "cassandra"
-                              Stop-words: drops "with"
-                              Porter Stemmer: "provides" -> "provid", "trees" -> "tree"
-```
-- **Slide Content:**
-  - Normalizes linguistic variations into canonical root tokens.
-  - Ensures queries match text regardless of case or grammatical inflection.
-- **Speaker Script (35s):**
-  > "Frame 1: Before text can be indexed, it enters the Analysis Pipeline. Character filters strip markup; the tokenizer breaks sentences into words on whitespace and punctuation; and token filters lowercase tokens, remove stop-words, and apply linguistic stemmers like the Porter Stemmer—reducing 'indexing' and 'indexes' to the root 'index'."
+### Slide 10: Storage Physics: Why Sequential Writing Wins
+**Section:** `02 LSM & Cassandra` | **Badge:** `Hardware Physics`  
+**Subtitle:** *Writing in a Straight Line is 50× to 100× Faster Than Jumping Across Disk Sectors*  
+
+#### Key Points:
+- Storage hardware (both SSDs and HDDs) writes sequential streams much faster than random seeks.
+- Cassandra translates every client mutation into a smooth sequential write.
+- This mechanical advantage delivers over 85,000 writes/sec in our benchmark tests.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "The secret behind Cassandra's legendary write performance is not complex code; it is hardware physics. Disk drives, whether spinning hard drives or NVMe SSDs, write sequential streams 50 to 100 times faster than random seeks. By strictly buffering in RAM and flushing sequentially to disk, Cassandra achieves over 85,000 writes per second on commodity hardware."
+- **Tiếng Việt (VI):** "Bí quyết đằng sau hiệu năng ghi huyền thoại của Cassandra không nằm ở thuật toán phức tạp mà bắt nguồn từ vật lý phần cứng. Mọi ổ đĩa, từ đĩa từ quay đến SSD NVMe, đều ghi dữ liệu tuần tự nhanh gấp 50 đến 100 lần so với tìm kiếm ngẫu nhiên. Bằng cách gom trên RAM và chỉ ghi nối đuôi tuần tự xuống đĩa, Cassandra dễ dàng đạt trên 85.000 lượt ghi mỗi giây trên phần cứng phổ thông."
 
 ---
 
-### SLIDE 11: [ANIMATION FRAME 2/4] FST Term Dictionary & Posting Lists
-- **Time Allocation:** 0:35 min (Elapsed: 8:35 – 9:10)
-- **Visual Animation Frame:**
-```
-TERM DICTIONARY (In-Memory FST)              POSTING LISTS (On Disk / OS Cache)
-┌─────────────────────────────────┐          ┌────────────────────────────────────────┐
-│ Finite State Transducer         │          │ Strictly Sorted by doc_id              │
-│ (Prefix & Suffix Compressed)    │          │                                        │
-│  "cassandra" ───────────────────┼─────────►│ [Doc 1 (tf:1)] ──► [Doc 3 (tf:2)]      │
-│  "elastic"   ───────────────────┼─────────►│ [Doc 2 (tf:1)] ──► [Doc 4 (tf:1)]      │
-│  "lsm"       ───────────────────┼─────────►│ [Doc 1 (tf:2)]                          │
-│  "write"     ───────────────────┼─────────►│ [Doc 1 (tf:1)] ──► [Doc 2 (tf:1)]      │
-└─────────────────────────────────┘          └────────────────────────────────────────┘
-Lookup complexity: O(term_length)            Contains: doc_id, term_freq, positions
-```
-- **Slide Content:**
-  - **FST:** In-memory graph sharing prefixes and suffixes; instant term lookup in $O(\text{len})$.
-  - **Posting Lists:** Sorted arrays enabling fast set-theoretic operations.
-- **Speaker Script (35s):**
-  > "Frame 2: Lucene stores unique terms in a Finite State Transducer (FST) in memory. Because the FST compresses common prefixes and suffixes, millions of terms fit into megabytes of RAM, resolving term lookups in order term-length time.
-  > Each term points to its Posting List: a sorted sequence of Document IDs and term frequencies."
+### Slide 11: Cassandra's Helper: The Bloom Filter in RAM
+**Section:** `02 LSM & Cassandra` | **Badge:** `Fast RAM Check`  
+**Subtitle:** *How to Check 20 Disk Files in Nanoseconds Without Doing 20 Slow Disk Reads*  
+
+#### Key Points:
+- Because SSTables are immutable, an item could be in any of the SSTable files on disk.
+- Reading without an index would mean opening and searching every SSTable file on disk.
+- Cassandra pairs every SSTable with a compact Bloom Filter in RAM to check key presence in nanoseconds.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "There is a catch to LSM-Trees: reading can be slow because data is scattered across multiple SSTable files on disk. If you have 20 SSTables, do you have to do 20 disk seeks? No! Cassandra's secret weapon is the Bloom Filter. Each SSTable has an in-memory bit array requiring only about 10 bits per key. It tests key presence in nanoseconds before touching disk."
+- **Tiếng Việt (VI):** "Cấu trúc LSM-Tree có một điểm yếu: đọc có thể bị chậm vì dữ liệu phân tán ở nhiều file SSTable trên đĩa. Nếu có 20 SSTable, chẳng lẽ phải tìm kiếm đĩa 20 lần? Hoàn toàn không! Vũ khí bí mật của Cassandra là Bloom Filter. Mỗi SSTable có một mảng bit nằm sẵn trên RAM, chỉ tốn khoảng 10 bit cho mỗi khóa. Nó kiểm tra sự tồn tại trong vài nano giây trước khi chạm vào đĩa."
 
 ---
 
-### SLIDE 12: [ANIMATION FRAME 3/4] Boolean Search with Skip Lists
-- **Time Allocation:** 0:40 min (Elapsed: 9:10 – 9:50)
-- **Visual Animation Frame:**
-```
-Query: "write" AND "search"
-Posting P("write"):  [Doc 1] ──────────────────► [Doc 45] ──► [Doc 99]
-                           \ (Skip Pointer: d=45) /
-Posting P("search"): [Doc 12] ─► [Doc 28] ─────► [Doc 45] ──► [Doc 80]
+### Slide 12: Bloom Filter Fast-Fail Mechanics
+**Section:** `02 LSM & Cassandra` | **Badge:** `Fast-Fail Mechanics`  
+**Subtitle:** *How a Single '0' Bit Skips Slow Disk Access Entirely in 3.42 Microseconds*  
 
-Step 1: P("write") at Doc 1 < P("search") at Doc 12 -> Hop via Skip Pointer to Doc 45!
-Step 2: P("search") at Doc 12 < 45 -> Scan to Doc 45 -> MATCH FOUND: Doc 45!
-Intersection Complexity: O(min(|P1|, |P2|))
-```
-- **Slide Content:**
-  - **Skip Pointers:** Embedded every $K$ documents (e.g., 16 docs) in posting lists.
-  - Allows skipping non-matching document blocks in $O(1)$ time without scanning every entry.
-- **Speaker Script (40s):**
-  > "Frame 3: For multi-term queries like 'write AND search', Elasticsearch intersects their sorted posting lists.
-  > To avoid scanning millions of documents, Lucene equips postings with Skip Lists. If list A is at doc 1 and list B is at doc 45, list A uses its skip pointer to leap directly to doc 45 in $O(1)$ time, skipping over intermediate documents. Set intersection executes in $O(\min(|P_1|, |P_2|))$."
+#### Key Points:
+- If any single hash bit evaluates to 0, the key is mathematically guaranteed not to exist in that file.
+- Cassandra immediately aborts searching that SSTable without touching physical disk.
+- Our live benchmark proves absent lookups take just 3.42 µs—faster than a hit!
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Here is the exact mathematics of why Bloom filters are so powerful. When a key is inserted, three hash functions flip three bits to 1. To check if an absent key like 999 exists, we compute the same three hashes. If even a single bit is 0, it is mathematically impossible for that key to be in the SSTable. Cassandra immediately fast-fails in 3.4 microseconds, completely bypassing disk I/O."
+- **Tiếng Việt (VI):** "Đây là toán học chính xác giải thích sức mạnh của Bloom Filter. Khi nạp một khóa, ba hàm băm sẽ bật ba bit tương ứng lên 1. Để kiểm tra một khóa không tồn tại như 999, ta tính lại ba vị trí bit đó. Chỉ cần một bit mang giá trị 0, ta khẳng định chắc chắn 100% khóa đó không hề nằm trong SSTable. Cassandra lập tức dừng lại trong 3,4 micro-giây mà không hề tốn một lượt đọc đĩa nào."
 
 ---
 
-### SLIDE 13: [ANIMATION FRAME 4/4] Okapi BM25 Relevance Scoring
-- **Time Allocation:** 0:45 min (Elapsed: 9:50 – 10:35)
-- **Visual Animation Frame:**
-```
-Score(D, Q) = ∑ [ IDF(q) · ( tf(q, D) · (k₁ + 1) ) / ( tf(q, D) + k₁ · (1 - b + b · |D| / avgdl) ) ]
-                  ▲              ▲                                   ▲
-                  │              │                                   │
-       1. Inverse Doc Freq    2. TF Saturation Curve             3. Length Penalty
-       Rare terms get higher  Marginal gain decays               Penalizes verbose docs,
-       weight multiplier.     (Caps keyword stuffing).           boosts concise matches.
-       k₁ = 1.2               b = 0.75
-```
-- **Slide Content:**
-  - Replaces naive linear TF-IDF with an asymptotic saturation curve ($k_1 = 1.2$).
-  - Document length normalization ($b = 0.75$) prevents long documents from unfairly dominating.
-- **Speaker Script (45s):**
-  > "Frame 4: Elasticsearch ranks results using Okapi BM25.
-  > First, Inverse Document Frequency assigns higher weight to rare terms.
-  > Second, the parameter $k_1 = 1.2$ introduces term frequency saturation: unlike linear TF-IDF where repeating a word 50 times multiplies your score by 50, BM25 asymptotes toward $k_1 + 1$, neutralizing keyword stuffing.
-  > Third, parameter $b = 0.75$ penalizes verbose documents and rewards concise matches."
+### Slide 13: Cassandra Warning: 'ALLOW FILTERING' Danger
+**Section:** `02 LSM & Cassandra` | **Badge:** `Anti-Pattern`  
+**Subtitle:** *Why Querying Non-Partition Keys Can Bring Down a Production Cluster*  
+
+#### Key Points:
+- Cassandra is designed strictly for Partition Key queries via consistent hashing.
+- Using `ALLOW FILTERING` on non-partition keys forces every node across the cluster to perform full table scans.
+- If you need arbitrary filtering across fields, Cassandra is the wrong tool—you need Elasticsearch.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Because Cassandra is so fast at key lookups, developers often fall into a deadly trap: using ALLOW FILTERING. When you query by primary key, Cassandra routes to exactly one node. But when you filter by a non-key column like email with ALLOW FILTERING, the cluster broadcasts to every single node, forcing every node to scan all its SSTables. This causes cluster-wide latency spikes and timeouts."
+- **Tiếng Việt (VI):** "Vì Cassandra đọc khóa chính rất nhanh nên các lập trình viên thường mắc phải một sai lầm chết người: lạm dụng ALLOW FILTERING. Khi truy vấn theo khóa chính, hệ thống định tuyến chính xác tới 1 nút. Nhưng khi lọc theo cột phụ như email bằng ALLOW FILTERING, điều phối viên buộc phải phát tán truy vấn tới mọi nút trong cụm, ép tất cả quét toàn bộ SSTable. Hậu quả là nghẽn CPU và sập cụm diện rộng."
 
 ---
 
-### SLIDE 14: 🛑 LIVE CODE DEMO STOP 2: Elasticsearch & BM25
-- **Time Allocation:** 2:00 min (Elapsed: 10:35 – 12:35)
-- **Visuals:** Full-screen terminal session running `demo.py`.
-- **Slide Content:**
-  - **DEMO STOP 2: ELASTICSEARCH IN ACTION**
-  - **Terminal Command:**
-    ```bash
-    python3 demo.py --elasticsearch
-    ```
-  - **Live Execution Checkpoints:**
-    1. *Step 1:* Analysis pipeline tokenization & Porter stemming.
-    2. *Step 2:* Inverted posting list inspection (`Term -> [Doc IDs, TF]`).
-    3. *Step 3:* Boolean AND query set intersection (`"write" AND "search"`).
-    4. *Step 4:* Okapi BM25 ranked scoring breakdown.
-    5. *Step 5:* Live speedup benchmark: Inverted Index vs. Brute-force linear scan over 1,655 quotes (**70x+ faster!**).
-- **Speaker Script (120s):**
-  > "Let us return to the terminal for Demo 2: Elasticsearch in action.
-  > *(Switch to terminal and run `python3 demo.py --elasticsearch`)*
-  > In Step 1, our text passes through the tokenizer and stemmer, turning 'throughput' and 'provides' into normalized root tokens.
-  > In Step 2, you see the inverted index entries: each term points to its sorted posting list with doc IDs and term frequencies.
-  > In Step 3, we execute a Boolean AND query for 'write' and 'search'. Lucene intersects the posting lists and returns Document 3 in microseconds.
-  > In Step 4, we run BM25 ranked scoring for 'write search database'. BM25 calculates the exact scores, ranking Document 3 highest because it matches multiple query terms.
-  > In Step 5, we test against the real 1,655-document quotes corpus. A linear scan takes over 3,000 microseconds. The Inverted Index resolves the query in just 11 microseconds—delivering a massive 280x live speedup!
-  > Let us return to the slides for our empirical conclusions."
+### Slide 14: Textbook Analogy: Searching Without an Index
+**Section:** `03 Inverted Index & ES` | **Badge:** `Analogy Step 1`  
+**Subtitle:** *Step 1: Reading Every Single Word to Find One Topic — The Exhausting Linear Scan*  
+
+#### Key Points:
+- Without an index, finding a word requires reading through every page from start to finish.
+- Our benchmark shows a linear scan takes 3,080 µs across just 1,655 short quotes.
+- As document collections grow to millions of records, linear scanning becomes completely unusable.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Now let us turn to search. Imagine you are handed a 500-page computer science textbook and asked to find every page mentioning 'database'. If the book has no index, you have to read page 1, page 2, all the way to page 500. In computer science, this is a Linear Scan. In our benchmarks, scanning just 1,655 quotes took over 3,000 microseconds, and it gets exponentially worse as data grows."
+- **Tiếng Việt (VI):** "Bây giờ chúng ta chuyển sang bài toán tìm kiếm. Hãy tưởng tượng bạn cầm một cuốn giáo trình 500 trang và cần tìm xem từ 'database' xuất hiện ở những trang nào. Nếu sách không có mục lục, bạn buộc phải đọc từ trang 1 đến trang 500. Trong khoa học máy tính, đó là Quét tuyến tính (Linear Scan). Trong thực nghiệm của nhóm, quét chỉ 1.655 câu danh ngôn đã tốn hơn 3.000 micro-giây, và thời gian sẽ tăng vọt khi dữ liệu lớn lên."
 
 ---
 
-## PART 4: EMPIRICAL BENCHMARKS & ARCHITECTURAL SYNTHESIS
+### Slide 15: Textbook Analogy: The Book Index Solution
+**Section:** `03 Inverted Index & ES` | **Badge:** `Analogy Step 2`  
+**Subtitle:** *Step 2: How Flipping to the Back-of-the-Book Speeds Up Search by 280×*  
 
-### SLIDE 15: Head-to-Head Empirical Benchmark Results
-- **Time Allocation:** 1:15 min (Elapsed: 12:35 – 13:50)
-- **Visuals:** Empirical bar charts: `report/figures/benchmark_comparison.svg`.
-- **Slide Content:**
+#### Key Points:
+- Human readers flip to the index at the back of the book where terms are sorted alphabetically.
+- An Inverted Index maps each word directly to the exact page or document numbers where it appears.
+- Our benchmark confirms search time drops from 3,080 µs down to 11 µs—a 280× speedup.
 
-| Empirical Dimension (5 Trials, $\mu \pm \sigma$) | Apache Cassandra (LSM) | Elasticsearch (Inverted Index) |
-| :--- | :---: | :---: |
-| **Ingestion Throughput** | **$85,624 \pm 6,126\ \text{ops/s}$** | **$93,935 \pm 3,385\ \text{docs/s}$** |
-| **Point Lookup Latency (Hit)** | **$5.42 \pm 0.27\ \mu\text{s}$** | N/A |
-| **Negative Query Latency (Miss)** | **$3.42 \pm 0.71\ \mu\text{s}$** (Bloom fast-fail) | N/A |
-| **Boolean AND Query Latency** | N/A | **$20.36 \pm 3.98\ \mu\text{s}$** |
-| **BM25 Top-5 Ranked Query Latency** | N/A | **$118.40 \pm 15.83\ \mu\text{s}$** |
-| **Index Memory Footprint** | **$153.7\ \text{Bytes/key}$** | **$2,292.8\ \text{Bytes/document}$** |
-
-- **Key Takeaways:**
-  - Cassandra achieves high ingestion with low memory overhead ($153.7\ \text{B/key}$), relying on Bloom filters to protect against Read Amplification.
-  - Elasticsearch delivers sub-millisecond lexical queries, but requires $15\times$ more memory ($2,292.8\ \text{B/doc}$) for FST term dictionaries.
-- **Speaker Script (75s):**
-  > "Here are our consolidated benchmark results measured across repeated trials over 10,000 geographic keys and 1,655 natural language quotes.
-  > Cassandra delivers over 85,000 operations per second write throughput, with point lookup hits at 5.4 microseconds and Bloom filter fast-fails at 3.4 microseconds. Its index memory footprint is extremely compact: just 153.7 Bytes per key.
-  > Elasticsearch matches ingestion via its in-memory buffer, and evaluates Boolean AND queries in 20 microseconds and BM25 ranking in 118 microseconds. But notice the RUM memory trade-off: it consumes 2,292 Bytes per document—fifteen times more memory—to maintain its rich FST term dictionary and posting metadata."
+#### Verbatim Spoken Scripts:
+- **English (EN):** "What does a human reader actually do? You flip to the index at the back of the book. Under letter 'D', you see 'database: pages 14, 45, 102'. You immediately turn to page 14 without ever looking at the other 490 pages. This is the Inverted Index. Instead of mapping Document to Words, it inverts the relationship to map Words to Documents. In our benchmark, this yields a 280-fold speedup."
+- **Tiếng Việt (VI):** "Người đọc thực tế sẽ làm gì? Bạn lật ngay ra phần mục lục tra cứu ở cuối sách. Dưới mục chữ 'D', bạn thấy 'database: trang 14, 45, 102'. Bạn mở ngay trang 14 mà không cần đụng tới 490 trang còn lại. Đó chính là Chỉ mục đảo (Inverted Index). Thay vì lưu Tài liệu trỏ đến Từ ngữ, nó đảo ngược lại: Từ ngữ trỏ đến Danh sách mã tài liệu. Trong thực nghiệm, điều này giúp tăng tốc 280 lần."
 
 ---
 
-### SLIDE 16: Architectural Synthesis: CQRS Pattern & System Selection
-- **Time Allocation:** 1:10 min (Elapsed: 13:50 – 15:00)
-- **Visuals:** Architecture Diagram: CQRS Integration Pattern (Cassandra Writes $\to$ Debezium/Kafka CDC $\to$ Elasticsearch Queries) + Decision Tree.
-- **Slide Content:**
-  - **The Golden Rule:** Never force a single engine outside its RUM specialization.
-    - Secondary indexes (`2i`) in Cassandra cause cluster-wide scatter-gather latency spikes.
-    - Using Elasticsearch as a primary write-heavy database causes segment merge thrashing.
-  - **The Production Solution: Dual-Engine CQRS:**
-    - **Cassandra (Write Path / System of Record):** Absorbs high-volume ingestion with linear horizontal scaling.
-    - **Change Data Capture (CDC / Debezium / Kafka):** Asynchronously streams commit-log mutations.
-    - **Elasticsearch (Read Path / Search & Analytics):** Builds inverted indexes to serve rich user search and BM25 ranking.
-- **Speaker Script (70s):**
-  > "To conclude: what is the final engineering takeaway?
-  > Never force an engine to handle queries that contradict its physical design.
-  > If you add secondary indexes to Cassandra, you cause scatter-gather latency spikes across every node. If you use Elasticsearch as a high-concurrency transactional database, constant segment merges and GC pauses will degrade your cluster.
-  > The enterprise standard is CQRS: Command Query Responsibility Segregation.
-  > Deploy Apache Cassandra as your primary System of Record to absorb high-velocity writes with guaranteed durability and linear scaling.
-  > Then, use Change Data Capture—via Debezium or Kafka—to asynchronously stream mutations into Elasticsearch to serve rich BM25 text queries and analytics.
-  > By understanding the RUM Conjecture, we combine specialized architectures to achieve optimal scale.
-  > Thank you, and we welcome your questions!"
+### Slide 16: Text Analysis: The Word Cleanup Factory
+**Section:** `03 Inverted Index & ES` | **Badge:** `Word Cleanup`  
+**Subtitle:** *Step 3: How Elasticsearch Transforms Raw Text into Searchable Tokens*  
+
+#### Key Points:
+- Before words enter the index, they pass through a 3-stage analysis pipeline.
+- Character Filter removes markup; Tokenizer splits words; Token Filter lowercases and trims word suffixes (stemming).
+- Because search queries undergo identical processing, searches match root meanings regardless of plurals or casing.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "How does raw text become an index? Lucene runs every string through an analysis conveyor belt. First, Character Filters strip HTML tags. Second, the Tokenizer splits text on spaces and punctuation into word tokens. Third, Token Filters convert everything to lowercase and apply Porter Stemming, turning 'Databases' into its root 'databas'. Queries undergo the exact same pipeline."
+- **Tiếng Việt (VI):** "Làm thế nào để văn bản thô biến thành chỉ mục? Lucene đưa chuỗi ký tự qua một dây chuyền phân tích 3 công đoạn. Bước 1, Bộ lọc ký tự loại bỏ các thẻ HTML. Bước 2, Bộ tách từ chia câu thành các từ đơn dựa theo dấu cách và dấu câu. Bước 3, Bộ lọc từ chuyển về chữ thường và rút gọn gốc từ bằng thuật toán Stemming, biến 'Databases' thành 'databas'. Truy vấn của người dùng cũng đi qua đúng dây chuyền này."
 
 ---
 
-## APPENDIX: LIVE DEMO CHEAT SHEET FOR PRESENTERS
+### Slide 17: Finding Multiple Words: Skip Pointers
+**Section:** `03 Inverted Index & ES` | **Badge:** `Fast Intersection`  
+**Subtitle:** *Step 4: Intersecting Multi-Term Boolean Queries Without Reading Every Document*  
 
-| Demo Section | Command to Run | What to Point at on Screen | Duration |
-| :--- | :--- | :--- | :---: |
-| **Demo 1: Cassandra** | `python3 demo.py --cassandra` | MemTable order $\to$ SSTable flush $\to$ Bloom Filter FAST-FAIL $\to$ Tombstone purge during compaction | 2:00 min |
-| **Demo 2: Elasticsearch** | `python3 demo.py --elasticsearch` | Tokenizer output $\to$ Posting lists $\to$ Skip Pointer intersection $\to$ BM25 scores $\to$ 70x+ speedup over linear scan | 2:00 min |
-| **Backup / Benchmark** | `python3 demo.py --benchmarks` | Full statistical table with sample mean ($\mu$) and standard deviation ($\sigma$) | Extra Q&A |
+#### Key Points:
+- For multi-word AND queries, Elasticsearch intersects sorted arrays of document IDs.
+- Skip pointers embed express highway shortcuts ahead in the posting list.
+- If one list is at Doc 60, it leaps over dozens of intermediate IDs on the second list in <em>O</em>(1) time.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "What happens when you search for 'write AND search'? Lucene retrieves the sorted posting lists for both words. Instead of checking every document ID one by one, Lucene uses Skip Pointers—express lane bridges embedded in the posting list. If list A is at Doc 60, list B can leapfrog past 50 documents instantly. This brings intersection time down to 13 microseconds."
+- **Tiếng Việt (VI):** "Điều gì xảy ra khi bạn tìm kiếm 'write AND search'? Lucene lấy ra hai danh sách mã tài liệu đã được sắp xếp tăng dần. Thay vì so khớp từng phần tử, Lucene sử dụng Skip Pointer — như các cây cầu vượt cao tốc trong danh sách. Nếu danh sách A đang ở Tài liệu 60, danh sách B có thể nhảy cóc qua 50 tài liệu trung gian chỉ trong 1 bước nhảy. Nhờ đó phép giao hoàn thành trong 13 micro-giây."
+
+---
+
+### Slide 18: Okapi BM25: The 3 Rules of Relevance
+**Section:** `03 Inverted Index & ES` | **Badge:** `Relevance Ranking`  
+**Subtitle:** *Step 5: How Elasticsearch Knows Which Document is Actually the Best Match*  
+
+#### Key Points:
+- Okapi BM25 is the probabilistic ranking formula powering modern Elasticsearch and Lucene.
+- Rule 1 (IDF): Penalizes common words, rewards rare terms.
+- Rule 2 (TF Saturation): Prevents keyword spamming; Rule 3 (Length Penalty): Normalizes document length.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Finding matching documents is only half the battle; which document should be at the top? Elasticsearch uses Okapi BM25, governed by three intuitive rules. Rule 1: Rare words win—if you search 'the database', 'database' gets all the points. Rule 2: Anti-spam ceiling—mentioning a word 50 times does not give 50 times the score; it tops out. Rule 3: Short and punchy—a match in a short headline scores higher than in a giant document."
+- **Tiếng Việt (VI):** "Tìm thấy tài liệu chỉ mới là một nửa chặng đường; tài liệu nào xứng đáng đứng đầu? Elasticsearch sử dụng thuật toán Okapi BM25 với 3 nguyên tắc trực quan. Nguyên tắc 1: Từ hiếm có giá trị cao — từ phổ biến như 'the' nhận 0 điểm, từ chuyên biệt như 'database' nhận trọn điểm số. Nguyên tắc 2: Chống gian lận từ khóa — lặp lại 50 lần không mang lại 50 lần điểm mà bị chặn trên bởi tiệm cận. Nguyên tắc 3: Ngắn gọn được ưu tiên — từ khóa xuất hiện trong tiêu đề ngắn được đánh giá cao hơn nằm lẫn trong một cuốn sách dày."
+
+---
+
+### Slide 19: Okapi BM25: The Math Made Simple
+**Section:** `03 Inverted Index & ES` | **Badge:** `Formula Decoded`  
+**Subtitle:** *Step 6: Understanding the Mathematical Formula Behind Relevance Scoring*  
+
+#### Key Points:
+- The BM25 formula calculates a continuous relevance score for ranking query results.
+- Parameter <em>k</em><sub>1</sub> = 1.2 prevents keyword stuffing by placing an asymptotic ceiling on frequency.
+- Parameter <em>b</em> = 0.75 balances document length against average corpus length.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Here is the exact mathematical equation of Okapi BM25. It sums the Inverse Document Frequency of each query term multiplied by a bounded term frequency curve. The parameter k1 set to 1.2 controls the saturation ceiling, and parameter b set to 0.75 controls the length penalty. In our live demo, this ranks the most relevant database quote at 1.92, cleanly separating it from lower-quality matches."
+- **Tiếng Việt (VI):** "Đây là công thức toán học chính xác của Okapi BM25. Điểm số là tổng nghịch đảo tần suất tài liệu (IDF) của từng từ nhân với đường cong bão hòa tần suất xuất hiện. Tham số k1 bằng 1.2 kiểm soát trần bão hòa chống spam, và tham số b bằng 0.75 kiểm soát mức độ phạt độ dài văn bản. Trong demo trực tiếp, công thức này chấm cho câu trích dẫn chuẩn nhất 1.92 điểm, tách biệt hoàn toàn khỏi các kết quả mờ nhạt khác."
+
+---
+
+### Slide 20: The Cost of Fast Search: 15× Memory Penalty
+**Section:** `03 Inverted Index & ES` | **Badge:** `The Hidden Cost`  
+**Subtitle:** *Step 7: The RUM Trade-Off — Paying with High RAM to Achieve Microsecond Search*  
+
+#### Key Points:
+- An Inverted Index stores every unique word in a document, multiplying index memory overhead.
+- Our empirical measurements show Elasticsearch requires 2,293 bytes/doc vs Cassandra's 154 bytes/key.
+- This 15× memory amplification is the physical trade-off demanded by the RUM Conjecture.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "There is no free lunch in computer science. To achieve 11-microsecond search times, Elasticsearch pays an enormous price in memory. While Cassandra needs only 154 bytes per key in RAM, Elasticsearch requires nearly 2,300 bytes per document to store posting lists and term dictionaries. That is a 15-to-1 memory ratio, perfectly illustrating the RUM Conjecture."
+- **Tiếng Việt (VI):** "Không có bữa trưa nào miễn phí trong khoa học máy tính. Để đạt được tốc độ tìm kiếm 11 micro-giây, Elasticsearch phải trả giá đắt bằng dung lượng RAM. Trong khi Cassandra chỉ tốn 154 byte cho mỗi khóa trên RAM, Elasticsearch cần tới gần 2.300 byte cho mỗi tài liệu để duy trì danh sách posting và từ điển thuật ngữ. Tỷ lệ chênh lệch bộ nhớ 15 lần này là minh chứng hoàn hảo cho Giả thuyết RUM."
+
+---
+
+### Slide 21: Comparing Both Systems: The 5W1H Matrix
+**Section:** `04 Synthesis` | **Badge:** `Comparison Matrix`  
+**Subtitle:** *A Plain-English Breakdown Across 6 Key Architectural Questions*  
+
+#### Key Points:
+- The 5W1H framework clearly organizes the contrasting design goals of both technologies.
+- Cassandra acts as the primary System of Record for high-speed write workloads.
+- Elasticsearch acts as a secondary search accelerator for rich query filters.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "To synthesize both technologies, we apply the 5W1H framework. Cassandra's 'What' is a distributed wide-column store for high-throughput appends where queries always provide the partition key. Elasticsearch's 'What' is a distributed search engine for ad-hoc multi-term queries with relevance scoring. Cassandra is the secure bank vault; Elasticsearch is the searchable storefront display."
+- **Tiếng Việt (VI):** "Để tổng hợp hai công nghệ, chúng em áp dụng khung phân tích 5W1H. 'Cái gì' của Cassandra là cơ sở dữ liệu phân tán tối ưu cho luồng ghi cực lớn với điều kiện truy vấn luôn có khóa phân vùng. 'Cái gì' của Elasticsearch là bộ máy tìm kiếm phục vụ các truy vấn đa trường bất kỳ kèm xếp hạng điểm liên quan. Cassandra đóng vai trò két sắt lưu trữ dữ liệu gốc; Elasticsearch là gian hàng trưng bày cho khách tìm kiếm."
+
+---
+
+### Slide 22: The Trade-Off Space: RUM Conjecture
+**Section:** `04 Synthesis` | **Badge:** `Physical Law`  
+**Subtitle:** *Why Neither Engine Can Replace the Other (Opposite Design Choices)*  
+
+#### Key Points:
+- Cassandra occupies the Update-Memory corner of RUM space.
+- Elasticsearch occupies the Read-optimization corner of RUM space.
+- The RUM Conjecture mathematically proves that neither engine can replace the other.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "When we map both engines onto the RUM Conjecture triangle, their complementary nature becomes crystal clear. Cassandra prioritizes Update and Memory overhead; Elasticsearch prioritizes Read latency. No engineer can break this law; choosing an engine is fundamentally choosing which corner of the trade-off space your application requires."
+- **Tiếng Việt (VI):** "Khi định vị hai bộ máy lên tam giác Giả thuyết RUM, bản chất bổ trợ lẫn nhau của chúng hiện ra rõ nét. Cassandra ưu tiên chi phí Ghi và Bộ nhớ; Elasticsearch ưu tiên độ trễ Đọc. Không một kỹ sư nào có thể phá vỡ định luật này; việc chọn storage engine thực chất là việc bạn chọn đánh đổi góc nào trong không gian thiết kế."
+
+---
+
+### Slide 23: Experimental Setup: Pure Reference Engines
+**Section:** `05 Experiments` | **Badge:** `Methodology`  
+**Subtitle:** *Building Clean, Zero-Dependency Prototypes to Measure Pure Storage Mechanics*  
+
+#### Key Points:
+- Built zero-dependency Python reference engines to isolate storage mechanics from network or JVM noise.
+- Cassandra engine faithfully implements MemTable, CommitLog, SSTables, Bloom filters, and Tombstones.
+- Elasticsearch engine implements the Analysis Pipeline, FST dictionaries, Skip Pointers, and BM25 scoring.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "To conduct rigorous scientific benchmarks, we implemented zero-dependency reference storage engines in pure Python. This eliminates network latency, operating system page cache noise, and JVM garbage collection artifacts. We implement every core mechanism from scratch: MemTables, immutable SSTables, Bloom filters, and compaction for Cassandra; and the analysis pipeline, skip pointers, and Okapi BM25 for Elasticsearch."
+- **Tiếng Việt (VI):** "Để thực hiện các đo đạc khoa học chính xác, chúng em tự xây dựng hai storage engine tham chiếu độc lập bằng Python thuần không phụ thuộc thư viện ngoài. Cách tiếp cận này loại bỏ hoàn toàn nhiễu từ độ trễ mạng hay dọn rác bộ nhớ của JVM. Chúng em cài đặt đầy đủ từ đầu: MemTable, SSTable bất biến, Bloom Filter và Compaction cho Cassandra; cùng dây chuyền phân tích từ, Skip Pointer và Okapi BM25 cho Elasticsearch."
+
+---
+
+### Slide 24: Test Datasets & Research Questions
+**Section:** `05 Experiments` | **Badge:** `Datasets & Qs`  
+**Subtitle:** *Testing Real Data Across 4 Concrete Hypotheses*  
+
+#### Key Points:
+- Datasets include 10,000 structured geographic records and 1,655 natural language quotes.
+- Q1 tests write scalability under periodic flushes; Q2 tests Bloom filter pruning efficiency.
+- Q3 tests multi-term search speedup; Q4 quantifies the exact memory amplification ratio.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "We evaluate four explicit research questions across two real-world datasets: 10,000 world cities for primary key writes, and 1,655 natural language quotes for search. Q1 asks if Cassandra sustains write speed during flushes. Q2 investigates if Bloom filters eliminate disk reads on absent keys. Q3 quantifies the search speedup over linear scans, and Q4 measures the exact memory cost."
+- **Tiếng Việt (VI):** "Chúng em đặt ra 4 câu hỏi nghiên cứu cụ thể trên 2 tập dữ liệu thực tế: 10.000 thành phố trên thế giới cho bài kiểm tra ghi khóa chính, và 1.655 danh ngôn tự nhiên cho bài kiểm tra tìm kiếm. Q1 kiểm tra khả năng duy trì tốc độ ghi của Cassandra khi xả đĩa. Q2 đo hiệu quả loại trừ đọc đĩa của Bloom Filter. Q3 đo lường mức độ tăng tốc tìm kiếm, và Q4 tính toán tỷ lệ tiêu tốn bộ nhớ RAM."
+
+---
+
+### Slide 25: Live Terminal Demo: Run It Yourself
+**Section:** `05 Experiments` | **Badge:** `Live Demo`  
+**Subtitle:** *Verified Reproduction Commands for Terminal and Google Colab*  
+
+#### Key Points:
+- Our presentation includes a live interactive checkpoint.
+- Every theoretical claim is backed by a single runnable bash command.
+- All tests pass cleanly with zero external third-party dependencies.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "At this point in the presentation, we switch to our live terminal checkpoint. With a single command, 'python3 demo.py --no-pause', the presentation audience can witness every step executing live: MemTable fills, SSTable flushes, Bloom filter fast-fails, and multi-term BM25 ranking across real datasets."
+- **Tiếng Việt (VI):** "Tại thời điểm này trong bài báo cáo, chúng em chuyển sang màn hình terminal để minh họa trực tiếp. Chỉ với một câu lệnh đơn giản 'python3 demo.py --no-pause', hội đồng có thể chứng kiến toàn bộ các bước hoạt động trong thực tế: nạp MemTable, xả SSTable, Bloom Filter loại trừ đọc đĩa và thuật toán BM25 xếp hạng văn bản trên dữ liệu thật."
+
+---
+
+### Slide 26: Empirical Scorecard: 5-Round Results
+**Section:** `06 Results` | **Badge:** `Empirical Scorecard`  
+**Subtitle:** *Statistical Measurements Across 5 Independent Benchmark Rounds (Mean ± Std Dev)*  
+
+#### Key Points:
+- Statistical validation over 5 independent trials confirms all theoretical predictions.
+- Cassandra delivers 85k ops/s write throughput with microsecond Bloom filter pruning.
+- Elasticsearch delivers 20 µs multi-term searches at the cost of 15× higher RAM consumption.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Here is our complete empirical scorecard, reporting sample mean and standard deviation over five repeated rounds after discarding warmup runs. The data confirms our theory: Cassandra achieves 85,000 writes/sec, and Bloom filter pruning drops negative lookups to 3.42 microseconds. Meanwhile, Elasticsearch executes multi-term intersections in 20 microseconds but consumes 15 times more RAM per record."
+- **Tiếng Việt (VI):** "Đây là bảng điểm thực nghiệm đầy đủ của chúng em, báo cáo giá trị trung bình mẫu và độ lệch chuẩn qua 5 lần chạy độc lập sau khi đã loại bỏ vòng khởi động. Số liệu khẳng định lý thuyết: Cassandra đạt 85.000 lượt ghi/giây và Bloom Filter giảm thời gian tìm khóa vắng mặt xuống 3,42 micro-giây. Trong khi đó, Elasticsearch thực hiện phép giao đa từ trong 20 micro-giây nhưng tốn gấp 15 lần bộ nhớ RAM cho mỗi bản ghi."
+
+---
+
+### Slide 27: Proof 1: Write Speed & Bloom Pruning
+**Section:** `06 Results` | **Badge:** `Proof 1 & 2`  
+**Subtitle:** *Answering Research Questions Q1 & Q2 With Statistical Evidence*  
+
+#### Key Points:
+- Q1 Answer: Cassandra sustains high write throughput even as data spills from RAM to disk.
+- Q2 Answer: Bloom filters achieve 100% pruning accuracy on non-existent keys.
+- This proves that LSM write performance does not degrade point read latency on absent keys.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Examining Questions 1 and 2 in detail: For Q1, Cassandra sustains an average of 85,000 operations per second across 10,000 records. For Q2, testing against 1,000 non-existent keys proved that the Bloom filter achieves 100% pruning efficiency. Not a single SSTable file was opened on disk, and the check completed in 3.42 microseconds."
+- **Tiếng Việt (VI):** "Phân tích chi tiết câu hỏi 1 và 2: Với Q1, Cassandra duy trì tốc độ ghi trung bình 85.000 thao tác/giây trên 10.000 bản ghi. Với Q2, thử nghiệm trên 1.000 khóa không tồn tại chứng minh Bloom Filter đạt hiệu suất loại trừ 100%. Không có bất kỳ file SSTable nào trên đĩa bị mở ra, và quá trình kiểm tra hoàn tất chỉ trong 3,42 micro-giây."
+
+---
+
+### Slide 28: Proof 2: Search Speedup & Memory Cost
+**Section:** `06 Results` | **Badge:** `Proof 3 & 4`  
+**Subtitle:** *Answering Research Questions Q3 & Q4 With Measured Benchmarks*  
+
+#### Key Points:
+- Q3 Answer: The inverted index delivers a 71× to 280× speedup over brute-force scanning.
+- Q4 Answer: The memory penalty is exactly 14.9×, verifying the physical cost of precomputing search indexes.
+- These empirical findings confirm the theoretical trade-offs described in modern academic literature.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Turning to Questions 3 and 4: For Q3, evaluating multi-term queries with posting lists was over 70 times faster than a brute-force scan on a small dataset, with the gap growing even larger at scale. For Q4, our memory measurements revealed an exact 14.9-to-1 memory amplification ratio. Elasticsearch buys search speed directly with RAM."
+- **Tiếng Việt (VI):** "Chuyển sang câu hỏi 3 và 4: Với Q3, việc xử lý truy vấn giao từ bằng posting list nhanh hơn quét vét cạn trên 70 lần ngay trên tập dữ liệu nhỏ, và khoảng cách này sẽ tăng theo cấp số nhân ở quy mô triệu bản ghi. Với Q4, đo đạc bộ nhớ cho thấy hệ số tiêu tốn RAM chính xác là 14.9 lần. Elasticsearch mua tốc độ tìm kiếm trực tiếp bằng dung lượng RAM."
+
+---
+
+### Slide 29: Production Architecture: Bank Vault vs. Storefront
+**Section:** `07 Architecture` | **Badge:** `Mental Model`  
+**Subtitle:** *How to Combine Both Systems in a Real Application Without Conflict*  
+
+#### Key Points:
+- Treat Cassandra as the Bank Vault: immutable, durable source of truth for writes.
+- Treat Elasticsearch as the Storefront Window: disposable, highly indexed view for customer search.
+- Synchronize them asynchronously via Change Data Capture (CDC), never synchronous dual-writes.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "To synthesize both technologies in real-world systems, think of Cassandra as the Bank Vault and Elasticsearch as the Storefront Display Window. You put gold into the vault for safekeeping—that is Cassandra storing the truth. You arrange pretty merchandise in the display window for customers to find—that is Elasticsearch. If the display window breaks, you simply rebuild it from the vault."
+- **Tiếng Việt (VI):** "Để kết hợp hai công nghệ trong thực tế, hãy xem Cassandra là Két Sắt Ngân Hàng và Elasticsearch là Cửa Sổ Trưng Bày. Bạn cất giữ vàng và tiền thật an toàn trong két sắt — đó là Cassandra giữ dữ liệu gốc. Bạn trưng bày hàng mẫu ra cửa kính cho khách hàng dễ tìm kiếm — đó là Elasticsearch. Nếu cửa kính trưng bày bị hỏng, bạn chỉ việc lấy đồ từ trong két sắt ra bày lại."
+
+---
+
+### Slide 30: Production Architecture: The CQRS Pattern
+**Section:** `07 Architecture` | **Badge:** `Architecture Solution`  
+**Subtitle:** *Separating Writes from Searches Using Change Data Capture (CDC) and Kafka*  
+
+#### Key Points:
+- Never write directly to both Cassandra and Elasticsearch from application code (Dual-Write Anti-Pattern).
+- Use Change Data Capture (CDC) via Kafka to tail Cassandra's CommitLog asynchronously.
+- This architecture maintains eventual consistency without slowing down write ingestion.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "In production, never write to both Cassandra and Elasticsearch directly from your application code. If one write succeeds and the other fails, your data will silently diverge. The industry standard is CQRS with Change Data Capture. The application writes only to Cassandra. Debezium tails the commit log and streams change events through Kafka to asynchronously populate Elasticsearch."
+- **Tiếng Việt (VI):** "Trong môi trường thực tế, tuyệt đối không bao giờ cho ứng dụng ghi đồng thời vào cả Cassandra và Elasticsearch. Nếu một bên thành công còn bên kia lỗi mạng, dữ liệu sẽ bị sai lệch âm thầm. Giải pháp chuẩn mực của ngành là CQRS kết hợp Change Data Capture. Ứng dụng chỉ ghi vào Cassandra. Debezium theo dõi CommitLog và truyền qua Kafka để cập nhật chỉ mục ngầm sang Elasticsearch."
+
+---
+
+### Slide 31: Three Golden Rules of Database Engineering
+**Section:** `07 Conclusion` | **Badge:** `Core Lessons`  
+**Subtitle:** *Key Lessons for Designing High-Scale Modern Systems*  
+
+#### Key Points:
+- Storage physics dictates design: no single storage engine satisfies all workloads.
+- Cassandra excels at append-only sequential ingestion; Elasticsearch excels at multi-term lexical retrieval.
+- In production, combine both via CQRS and asynchronous Change Data Capture.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "To conclude our findings, remember three core principles. First: There is no silver bullet—the RUM Conjecture dictates that physical trade-offs are unavoidable. Second: Cassandra and Elasticsearch have complementary asymmetric strengths. Third: Decouple them in production using the CQRS pattern with Change Data Capture."
+- **Tiếng Việt (VI):** "Để kết luận buổi báo cáo, chúng em xin đúc kết 3 nguyên tắc cốt lõi. Thứ nhất: Không có giải pháp vạn năng — Giả thuyết RUM khẳng định sự đánh đổi vật lý là tất yếu. Thứ hai: Cassandra và Elasticsearch sở hữu sức mạnh bổ trợ đối lập nhau. Thứ ba: Hãy kết hợp chúng trong thực tế qua mô hình CQRS và Change Data Capture."
+
+---
+
+### Slide 32: Thank You & Open Q&A
+**Section:** `07 Conclusion` | **Badge:** `Q&A Session`  
+**Subtitle:** *Cảm ơn Thầy Cô và các bạn! Sẵn sàng giải đáp mọi câu hỏi thảo luận*  
+
+#### Key Points:
+- Complete code, benchmarks, tests, and interactive slides are fully reproducible.
+- Grounded strictly in peer-reviewed modern academic literature (VLDB 2024, Springer 2022).
+- Ready for live Q&A session with committee and audience.
+
+#### Verbatim Spoken Scripts:
+- **English (EN):** "Thank you very much for your time and attention. All reference implementations, automated unit tests, stress benchmarks, and interactive notebooks are fully open and reproducible in our repository. We are now open and eager to take your questions and discuss any technical details."
+- **Tiếng Việt (VI):** "Xin chân thành cảm ơn quý Thầy Cô và các bạn đã chú ý lắng nghe. Toàn bộ mã nguồn hai bộ máy tham chiếu, bài kiểm thử tự động, tập đo đạc hiệu năng và notebook tương tác đều được đóng gói độc lập và tái lập 100% trong kho lưu trữ của nhóm. Chúng em rất mong nhận được những góp ý và câu hỏi thảo luận từ Thầy Cô cùng các bạn."
+
+---

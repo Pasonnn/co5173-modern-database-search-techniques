@@ -63,9 +63,8 @@ $$\text{Read Amplification } (R) \quad \longleftrightarrow \quad \text{Update Am
 │   ├── stress_test.py          # Workload stress tests (write scaling, Bloom pruning, lexical search)
 │   └── results/                # Output benchmark logs
 ├── report/
-│   ├── final_report.md         # Comprehensive academic research report
-│   ├── outline.md              # Research outline and structure
-│   ├── slides_content.md       # 15-Minute high-impact presentation slides (with speaker scripts)
+│   ├── presentation.html       # Standalone interactive 32-slide deck with live timer & bilingual notes
+│   ├── slides_content.md       # 15-Minute high-impact presentation slides (with EN & VI speaker scripts)
 │   └── figures/                # Publication-quality vector SVG architectural diagrams
 │       ├── rum_conjecture.svg
 │       ├── lsm_tree_architecture.svg
@@ -122,6 +121,13 @@ Evaluated over $N=10,000$ real-world geographic primary keys and $1,655$ natural
 
 ## 6. Quickstart & Verification
 
+### Run Interactive Jupyter Demo
+```bash
+jupyter notebook demo.ipynb
+# Or run step-by-step CLI demo:
+python3 demo.py --no-pause
+```
+
 ### Run Automated Test Suite
 ```bash
 python3 tests/test_all.py
@@ -144,8 +150,26 @@ python3 scripts/generate_figures.py
 
 ---
 
-## 7. Presentation & Report
+## 7. Presentation & Materials
 
-- **Final Research Report:** [`report/final_report.md`](report/final_report.md)
-- **15-Minute Presentation Slides & Speaker Scripts:** [`report/slides_content.md`](report/slides_content.md)
+- **Standalone Interactive HTML Slide Deck:** [`presentation.html`](presentation.html) (or [`report/presentation.html`](report/presentation.html))
+  - Features 32 bite-sized, step-by-step visual slides with pure CSS animations (textbook linear scan laser, flipped back-index tabs, desk notepad, Bloom filter bit-array with glowing fast-fail pulse, skip-pointer railway leapfrog, BM25 3-rule cards, Bank Vault vs. Storefront Window with CQRS conveyor belt).
+  - Built-in live 15-minute presentation countdown timer with color pacing alerts, slide jump selector, bilingual speaker drawer (EN / VI / Both), and full keyboard navigation.
+- **Step-by-Step Presentation Content & Bilingual Scripts:** [`report/slides_content.md`](report/slides_content.md)
+- **Recompile Presentation Decks:** `python3 scripts/build_full_visual_presentation.py`
+- **Interactive Jupyter Demo Notebook:** [`demo.ipynb`](demo.ipynb)
+- **Step-by-Step Live Terminal Demos:** `python3 demo.py --cassandra` and `python3 demo.py --elasticsearch`
 - **Architectural Vector Figures:** [`report/figures/`](report/figures/)
+
+---
+
+## 8. Theoretical Foundations & References (> 2021)
+
+This project grounds its architectural analysis and empirical benchmarking strictly on two peer-reviewed modern academic references published within the last three years:
+
+1. **[1] Huynh, A., Chaudhari, H. A., Terzi, E., & Athanassoulis, M. (2024).**  
+   *"Towards flexibility and robustness of LSM trees"*, **The VLDB Journal**, 33(3), pp. 855–881. [DOI: 10.1007/s00778-023-00826-9](https://doi.org/10.1007/s00778-023-00826-9)  
+   *Authored by RUM conjecture pioneer Manos Athanassoulis. Provides the mathematical and empirical analysis of LSM-Tree storage engines, Read-Update-Memory trade-offs, Bloom filter bit allocations across levels, and compaction strategies (STCS vs. LCS).*
+2. **[2] Lin, J., Nogueira, R., & Yates, A. (2022).**  
+   *"Pretrained Transformers for Text Ranking: BERT and Beyond"*, **Springer International Publishing**. [DOI: 10.1007/978-3-031-02181-7](https://doi.org/10.1007/978-3-031-02181-7)  
+   *Chapter 2 ("Traditional Text Ranking") provides the authoritative modern reference for Inverted Index data structures, Lucene term dictionaries, posting lists, skip-pointer intersections, and Okapi BM25 probabilistic relevance scoring.*

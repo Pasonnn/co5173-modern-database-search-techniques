@@ -7,6 +7,9 @@
     <filter id="shadowLsm">
       <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.45"/>
     </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#60a5fa" />
+    </marker>
   </defs>
 
   <rect width="900" height="680" fill="url(#bgLsm)" rx="16" />

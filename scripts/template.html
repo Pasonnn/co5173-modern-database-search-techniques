@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CO5173 — Storage Engine Duality: Cassandra vs Elasticsearch</title>
+  <!-- KaTeX Progressive Enhancement -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+  <style>
+    /* Reset & Base */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    em { font-style: italic; color: #93c5fd; }
+    sup { font-size: 0.8em; vertical-align: super; line-height: 0; }
+    sub { font-size: 0.8em; vertical-align: sub; line-height: 0; }
+
+    /* CSS Keyframe Animations */
+    @keyframes scanLaser {
+      0% { top: 15%; opacity: 0.3; }
+      50% { top: 80%; opacity: 1; }
+      100% { top: 15%; opacity: 0.3; }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(244, 63, 94, 0.4); transform: scale(1); }
+      50% { box-shadow: 0 0 30px rgba(244, 63, 94, 0.8); transform: scale(1.02); }
+    }
+    @keyframes greenGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); }
+      50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.7); }
+    }
+    @keyframes conveyorMove {
+      0% { background-position: 0 0; }
+      100% { background-position: 40px 0; }
+    }
+    @keyframes leapJump {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    /* Top Navigation Header */
+    header {
+      height: 54px;
+      background: #111827;
+      border-bottom: 1px solid #1f2937;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+    .brand-badge {
+      background: #3b82f6;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .nav-tools {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .slide-select {
+      background: #1f2937;
+      color: #e5e7eb;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      max-width: 320px;
+    }
+    .btn {
+      background: #1f2937;
+      color: #e5e7eb;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn:hover {
+      background: #374151;
+      border-color: #4b5563;
+    }
+    .btn.active {
+      background: #3b82f6;
+      border-color: #60a5fa;
+      color: #fff;
+    }
+
+    /* Timer Chip */
+    .timer-badge {
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      cursor: pointer;
+    }
+    .timer-badge.warning {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+    .timer-badge.danger {
+      background: rgba(244, 63, 94, 0.2);
+      color: #fb7185;
+      border-color: rgba(244, 63, 94, 0.4);
+    }
+
+    /* Slide Stage */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+      overflow-y: auto;
+    }
+    .slide-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .sec-tag {
+      font-size: 11px;
+      font-weight: 800;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .badge-tag {
+      background: #374151;
+      color: #cbd5e1;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .slide-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+    .slide-sub {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 2px;
+      margin-bottom: 14px;
+    }
+
+    /* Visual Content Container */
+    .slide-visual-stage {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      min-height: 270px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* Key Points Section */
+    .key-points-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .point-card {
+      background: #1a2234;
+      border-left: 3px solid #3b82f6;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    /* Footer & Speaker Notes Drawer */
+    footer {
+      background: #111827;
+      border-top: 1px solid #1f2937;
+      padding: 10px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+    }
+    .footer-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .speaker-drawer {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13.5px;
+      line-height: 1.6;
+      display: none;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .speaker-drawer.visible {
+      display: block;
+    }
+    .notes-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 4px;
+    }
+    .note-tab {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .note-tab.active {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    /* Textbook Styles */
+    .book-mockup {
+      position: relative;
+      width: 100%;
+      height: 240px;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 2px solid #334155;
+      border-radius: 10px;
+      padding: 18px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .book-spine {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 14px;
+      background: #090d16;
+      border-right: 1px solid #475569;
+    }
+    .book-lines {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      margin-left: 14px;
+    }
+    .book-line {
+      height: 8px;
+      background: #334155;
+      border-radius: 4px;
+      width: 100%;
+    }
+    .book-line.short { width: 65%; }
+    .book-line.medium { width: 85%; }
+    .laser-bar {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      height: 4px;
+      background: linear-gradient(90deg, transparent, #f43f5e, #f59e0b, transparent);
+      box-shadow: 0 0 15px #f43f5e;
+      animation: scanLaser 3s infinite ease-in-out;
+    }
+    .index-letter-badge {
+      background: #3b82f6;
+      color: #fff;
+      font-weight: 800;
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+    .index-entry-card {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      border-radius: 6px;
+      padding: 10px 14px;
+      animation: greenGlow 2.5s infinite ease-in-out;
+    }
+
+    /* Desk Notepad Styles */
+    .notepad-mockup {
+      background: #fef3c7;
+      color: #78350f;
+      border-radius: 6px;
+      padding: 14px;
+      box-shadow: 4px 8px 20px rgba(0,0,0,0.5);
+      font-family: monospace;
+      font-weight: 600;
+      border-top: 10px solid #b45309;
+    }
+    .notepad-line {
+      border-bottom: 1px dashed #d97706;
+      padding: 5px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+    }
+
+    /* Bloom Filter Bit Array */
+    .bit-array-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+      margin: 12px 0;
+    }
+    .bit-cell {
+      background: #1e293b;
+      border: 2px solid #475569;
+      border-radius: 4px;
+      height: 38px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-family: monospace;
+    }
+    .bit-cell.zero { color: #94a3b8; }
+    .bit-cell.one {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: #10b981;
+      color: #34d399;
+    }
+    .bit-cell.fail-target {
+      background: rgba(244, 63, 94, 0.25);
+      border-color: #f43f5e;
+      color: #f43f5e;
+      animation: pulseGlow 1.8s infinite ease-in-out;
+    }
+
+    /* Railway Track for Skip Pointers */
+    .railway-track {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 8px;
+      background: #111827;
+      border-radius: 8px;
+      border: 1px solid #374151;
+    }
+    .doc-station {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #1f2937;
+      border: 2px solid #6b7280;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 11.5px;
+      z-index: 2;
+    }
+    .doc-station.match {
+      background: #065f46;
+      border-color: #34d399;
+      color: #ecfdf5;
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.6);
+    }
+
+    /* Storefront vs Vault Styles */
+    .dual-system-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+    .system-box {
+      background: #1e293b;
+      border: 2px solid #334155;
+      border-radius: 10px;
+      padding: 18px;
+      text-align: center;
+    }
+    .system-box.vault {
+      border-color: #f59e0b;
+      background: linear-gradient(145deg, #1e1e24, #2a2015);
+    }
+    .system-box.storefront {
+      border-color: #06b6d4;
+      background: linear-gradient(145deg, #15222e, #0e2936);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <span class="brand-badge">CO5173</span>
+      <span>Cassandra vs Elasticsearch</span>
+    </div>
+    <div class="nav-tools">
+      <select id="slideSelect" class="slide-select" onchange="jumpToSlide(this.value)">
+      </select>
+      <div id="timerDisplay" class="timer-badge" onclick="toggleTimer()" title="Click to pause/resume timer">
+        ⏱️ 00:00 / 15:00
+      </div>
+      <button class="btn" onclick="toggleNotes()" id="notesBtn" title="Toggle Speaker Notes [S]">
+        📝 Notes
+      </button>
+      <button class="btn" onclick="toggleLanguage()" id="langBtn" title="Toggle Language [L]">
+        🌐 EN
+      </button>
+      <button class="btn" onclick="toggleFullscreen()" title="Fullscreen [F]">
+        ⛶
+      </button>
+    </div>
+  </header>
+
+  <!-- Slide Stage -->
+  <main id="slideStage">
+    <!-- Rendered dynamically -->
+  </main>
+
+  <!-- Footer Navigation & Speaker Drawer -->
+  <footer>
+    <div class="footer-bar">
+      <div style="font-size: 13px; color: #94a3b8; font-family: monospace;" id="slideCounter">
+        Slide 1 of 32
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn" onclick="prevSlide()" title="Previous Slide [←]">◀ Prev</button>
+        <button class="btn active" onclick="nextSlide()" title="Next Slide [→]">Next ▶</button>
+      </div>
+    </div>
+
+    <!-- Collapsible Speaker Drawer -->
+    <div id="speakerDrawer" class="speaker-drawer">
+      <div class="notes-tabs">
+        <span class="note-tab active" id="tabEN" onclick="setNoteTab('en')">English Script</span>
+        <span class="note-tab" id="tabVI" onclick="setNoteTab('vi')">Tiếng Việt</span>
+        <span class="note-tab" id="tabBoth" onclick="setNoteTab('both')">Both (Song ngữ)</span>
+      </div>
+      <div id="notesContent"></div>
+    </div>
+  </footer>
+
+  <script>
+    const slides = __SLIDES_DATA_PLACEHOLDER__;
+    let currentIdx = 0;
+    let timerSeconds = 0;
+    let timerRunning = true;
+    let timerInterval = null;
+    let currentNoteTab = 'en';
+
+    // Initialize Dropdown
+    const select = document.getElementById('slideSelect');
+    slides.forEach((s, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = `${s.num}. ${s.title}`;
+      select.appendChild(opt);
+    });
+
+    function renderSlide(idx) {
+      currentIdx = idx;
+      const s = slides[currentIdx];
+      select.value = currentIdx;
+
+      document.getElementById('slideCounter').textContent = `Slide ${s.num} of ${slides.length} (${s.section})`;
+
+      const stage = document.getElementById('slideStage');
+      stage.innerHTML = `
+        <div class="slide-meta">
+          <span class="sec-tag">${s.section}</span>
+          ${s.badge ? `<span class="badge-tag">${s.badge}</span>` : ''}
+        </div>
+        <div class="slide-title">${s.title}</div>
+        <div class="slide-sub">${s.subtitle}</div>
+        <div class="slide-visual-stage">
+          ${s.visual_html}
+        </div>
+        <div class="key-points-grid">
+          ${s.key_points.map(pt => `<div class="point-card">${pt}</div>`).join('')}
+        </div>
+      `;
+
+      updateNotesContent();
+    }
+
+    function updateNotesContent() {
+      const s = slides[currentIdx];
+      const container = document.getElementById('notesContent');
+      if (currentNoteTab === 'en') {
+        container.innerHTML = `<div style="color: #93c5fd;"><strong>EN:</strong> ${s.script_en}</div>`;
+      } else if (currentNoteTab === 'vi') {
+        container.innerHTML = `<div style="color: #6ee7b7;"><strong>VI:</strong> ${s.script_vi}</div>`;
+      } else {
+        container.innerHTML = `
+          <div style="color: #93c5fd; margin-bottom: 8px;"><strong>EN:</strong> ${s.script_en}</div>
+          <div style="color: #6ee7b7;"><strong>VI:</strong> ${s.script_vi}</div>
+        `;
+      }
+    }
+
+    function setNoteTab(tab) {
+      currentNoteTab = tab;
+      document.getElementById('tabEN').classList.toggle('active', tab === 'en');
+      document.getElementById('tabVI').classList.toggle('active', tab === 'vi');
+      document.getElementById('tabBoth').classList.toggle('active', tab === 'both');
+      updateNotesContent();
+    }
+
+    function toggleNotes() {
+      const drawer = document.getElementById('speakerDrawer');
+      const btn = document.getElementById('notesBtn');
+      drawer.classList.toggle('visible');
+      btn.classList.toggle('active');
+    }
+
+    function toggleLanguage() {
+      const btn = document.getElementById('langBtn');
+      if (currentNoteTab === 'en') {
+        setNoteTab('vi');
+        btn.textContent = '🌐 VI';
+      } else if (currentNoteTab === 'vi') {
+        setNoteTab('both');
+        btn.textContent = '🌐 BOTH';
+      } else {
+        setNoteTab('en');
+        btn.textContent = '🌐 EN';
+      }
+    }
+
+    function nextSlide() {
+      if (currentIdx < slides.length - 1) {
+        renderSlide(currentIdx + 1);
+      }
+    }
+
+    function prevSlide() {
+      if (currentIdx > 0) {
+        renderSlide(currentIdx - 1);
+      }
+    }
+
+    function jumpToSlide(idx) {
+      renderSlide(parseInt(idx, 10));
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+
+    // 15-Minute Countdown Timer
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        if (timerRunning) {
+          timerSeconds++;
+          const mins = Math.floor(timerSeconds / 60);
+          const secs = timerSeconds % 60;
+          const display = document.getElementById('timerDisplay');
+          display.textContent = `⏱️ ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} / 15:00`;
+
+          if (timerSeconds >= 14 * 60) {
+            display.className = 'timer-badge danger';
+          } else if (timerSeconds >= 12 * 60) {
+            display.className = 'timer-badge warning';
+          } else {
+            display.className = 'timer-badge';
+          }
+        }
+      }, 1000);
+    }
+
+    function toggleTimer() {
+      timerRunning = !timerRunning;
+    }
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key.toLowerCase() === 's') {
+        toggleNotes();
+      } else if (e.key.toLowerCase() === 'l') {
+        toggleLanguage();
+      } else if (e.key.toLowerCase() === 't') {
+        toggleTimer();
+      } else if (e.key.toLowerCase() === 'f') {
+        toggleFullscreen();
+      }
+    });
+
+    // Boot
+    renderSlide(0);
+    startTimer();
+  </script>
+</body>
+</html>

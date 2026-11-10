@@ -7,56 +7,36 @@
   <!-- KaTeX Progressive Enhancement -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
   <style>
-    /* Reset & Base */
+    /* Reset & Base - Academic Light Theme */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #0b0f19;
-      color: #f3f4f6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
       height: 100vh;
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      -webkit-font-smoothing: antialiased;
     }
-    em { font-style: italic; color: #93c5fd; }
+    em { font-style: italic; color: #0284C7; }
     sup { font-size: 0.8em; vertical-align: super; line-height: 0; }
     sub { font-size: 0.8em; vertical-align: sub; line-height: 0; }
-
-    /* CSS Keyframe Animations */
-    @keyframes scanLaser {
-      0% { top: 15%; opacity: 0.3; }
-      50% { top: 80%; opacity: 1; }
-      100% { top: 15%; opacity: 0.3; }
-    }
-    @keyframes pulseGlow {
-      0%, 100% { box-shadow: 0 0 15px rgba(244, 63, 94, 0.4); transform: scale(1); }
-      50% { box-shadow: 0 0 30px rgba(244, 63, 94, 0.8); transform: scale(1.02); }
-    }
-    @keyframes greenGlow {
-      0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); }
-      50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.7); }
-    }
-    @keyframes conveyorMove {
-      0% { background-position: 0 0; }
-      100% { background-position: 40px 0; }
-    }
-    @keyframes leapJump {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-12px); }
-    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 
     /* Top Navigation Header */
     header {
-      height: 54px;
-      background: #111827;
-      border-bottom: 1px solid #1f2937;
+      height: 52px;
+      background: #FFFFFF;
+      border-bottom: 1.5px solid #E2E8F0;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 24px;
       z-index: 100;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     }
     .brand {
       display: flex;
@@ -64,11 +44,11 @@
       gap: 12px;
       font-size: 13.5px;
       font-weight: 700;
-      color: #94a3b8;
+      color: #334155;
     }
     .brand-badge {
-      background: #3b82f6;
-      color: #fff;
+      background: #0284C7;
+      color: #FFFFFF;
       font-size: 11px;
       font-weight: 800;
       padding: 3px 8px;
@@ -78,26 +58,30 @@
     .nav-tools {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
     .slide-select {
-      background: #1f2937;
-      color: #e5e7eb;
-      border: 1px solid #374151;
+      background: #FFFFFF;
+      color: #0F172A;
+      border: 1.5px solid #CBD5E1;
       border-radius: 6px;
-      padding: 6px 12px;
+      padding: 5px 10px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       outline: none;
       max-width: 320px;
+      transition: border-color 0.15s ease;
+    }
+    .slide-select:focus {
+      border-color: #0284C7;
     }
     .btn {
-      background: #1f2937;
-      color: #e5e7eb;
-      border: 1px solid #374151;
+      background: #FFFFFF;
+      color: #1E293B;
+      border: 1.5px solid #CBD5E1;
       border-radius: 6px;
-      padding: 6px 12px;
+      padding: 5px 12px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
@@ -107,36 +91,37 @@
       transition: all 0.15s ease;
     }
     .btn:hover {
-      background: #374151;
-      border-color: #4b5563;
+      background: #F1F5F9;
+      border-color: #94A3B8;
     }
     .btn.active {
-      background: #3b82f6;
-      border-color: #60a5fa;
-      color: #fff;
+      background: #0284C7;
+      border-color: #0284C7;
+      color: #FFFFFF;
     }
 
     /* Timer Chip */
     .timer-badge {
-      font-family: monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 13px;
       font-weight: 700;
       padding: 4px 10px;
       border-radius: 6px;
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: #F0FDF4;
+      color: #15803D;
+      border: 1.5px solid #BBF7D0;
       cursor: pointer;
+      user-select: none;
     }
     .timer-badge.warning {
-      background: rgba(245, 158, 11, 0.2);
-      color: #fbbf24;
-      border-color: rgba(245, 158, 11, 0.4);
+      background: #FEFCE8;
+      color: #A16207;
+      border-color: #FEF08A;
     }
     .timer-badge.danger {
-      background: rgba(244, 63, 94, 0.2);
-      color: #fb7185;
-      border-color: rgba(244, 63, 94, 0.4);
+      background: #FFF1F2;
+      color: #BE123C;
+      border-color: #FECDD3;
     }
 
     /* Slide Stage */
@@ -144,8 +129,8 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 16px 40px;
-      max-width: 1400px;
+      padding: 14px 36px;
+      max-width: 1360px;
       margin: 0 auto;
       width: 100%;
       overflow-y: auto;
@@ -153,19 +138,20 @@
     .slide-meta {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       margin-bottom: 4px;
     }
     .sec-tag {
       font-size: 11px;
       font-weight: 800;
-      color: #38bdf8;
+      color: #0284C7;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.8px;
     }
     .badge-tag {
-      background: #374151;
-      color: #cbd5e1;
+      background: #F1F5F9;
+      color: #475569;
+      border: 1px solid #E2E8F0;
       font-size: 11px;
       font-weight: 700;
       padding: 2px 8px;
@@ -173,56 +159,217 @@
     }
     .slide-title {
       font-size: 26px;
-      font-weight: 900;
-      color: #ffffff;
+      font-weight: 800;
+      color: #0F172A;
       letter-spacing: -0.5px;
+      line-height: 1.2;
     }
     .slide-sub {
       font-size: 14px;
-      color: #94a3b8;
-      margin-top: 2px;
-      margin-bottom: 14px;
+      color: #475569;
+      margin-top: 3px;
+      margin-bottom: 12px;
+      font-weight: 500;
     }
 
     /* Visual Content Container */
     .slide-visual-stage {
-      background: #111827;
-      border: 1px solid #1f2937;
+      background: #FFFFFF;
+      border: 1.5px solid #E2E8F0;
       border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-      min-height: 270px;
+      padding: 18px 22px;
+      box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
+      min-height: 300px;
       display: flex;
       flex-direction: column;
       justify-content: center;
+    }
+
+    /* Diagram Placeholder Box */
+    .diagram-placeholder {
+      background: #F8FAFC;
+      border: 2px dashed #0284C7;
+      border-radius: 8px;
+      padding: 14px 16px;
+      position: relative;
+    }
+    .diagram-placeholder.crimson-border {
+      border-color: #E11D48;
+    }
+    .diagram-placeholder.teal-border {
+      border-color: #0D9488;
+    }
+    .diagram-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #E0F2FE;
+      color: #0369A1;
+      border: 1px solid #BAE6FD;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .diagram-badge.crimson {
+      background: #FFE4E6;
+      color: #BE123C;
+      border-color: #FECDD3;
+    }
+    .diagram-badge.teal {
+      background: #CCFBF1;
+      color: #0F766E;
+      border-color: #99F6E4;
+    }
+
+    /* Hero Metric Callout */
+    .hero-metric-callout {
+      background: #F8FAFC;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .hero-metric-val {
+      font-size: 34px;
+      font-weight: 900;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+    .hero-metric-val.blue { color: #0284C7; }
+    .hero-metric-val.teal { color: #0D9488; }
+    .hero-metric-val.crimson { color: #E11D48; }
+    .hero-metric-val.emerald { color: #059669; }
+    .hero-metric-sub {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 3px;
     }
 
     /* Key Points Section */
     .key-points-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 12px;
-      margin-top: 14px;
+      gap: 10px;
+      margin-top: 12px;
     }
     .point-card {
-      background: #1a2234;
-      border-left: 3px solid #3b82f6;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-left: 3.5px solid #0284C7;
       border-radius: 6px;
-      padding: 9px 12px;
-      font-size: 12.5px;
-      color: #cbd5e1;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #334155;
+      line-height: 1.45;
+      font-weight: 500;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    }
+    .point-card.crimson { border-left-color: #E11D48; }
+    .point-card.teal { border-left-color: #0D9488; }
+
+    /* Layout & Component Helpers */
+    .split-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .split-left-wide {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .split-right-wide {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .tag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1E293B;
+    }
+    .tag-pill.crimson {
+      background: #FFF1F2;
+      border-color: #FECDD3;
+      color: #9F1239;
+    }
+    .tag-pill.blue {
+      background: #F0F9FF;
+      border-color: #BAE6FD;
+      color: #0369A1;
+    }
+    .tag-pill.teal {
+      background: #F0FDFA;
+      border-color: #99F6E4;
+      color: #0F766E;
+    }
+    .tag-pill.emerald {
+      background: #ECFDF5;
+      border-color: #A7F3D0;
+      color: #047857;
+    }
+    .table-academic {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+    .table-academic th {
+      background: #F1F5F9;
+      color: #0F172A;
+      font-weight: 800;
+      padding: 8px 10px;
+      border: 1px solid #CBD5E1;
+      letter-spacing: 0.3px;
+    }
+    .table-academic td {
+      padding: 8px 10px;
+      border: 1px solid #CBD5E1;
+      color: #1E293B;
+    }
+    .table-academic tr:nth-child(even) {
+      background: #F8FAFC;
+    }
+    .code-snippet-box {
+      background: #0F172A;
+      color: #F8FAFC;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
       line-height: 1.5;
+      border: 1px solid #334155;
     }
 
     /* Footer & Speaker Notes Drawer */
     footer {
-      background: #111827;
-      border-top: 1px solid #1f2937;
-      padding: 10px 24px;
+      background: #FFFFFF;
+      border-top: 1.5px solid #E2E8F0;
+      padding: 8px 24px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       z-index: 100;
+      box-shadow: 0 -1px 3px rgba(15, 23, 42, 0.03);
     }
     .footer-bar {
       display: flex;
@@ -230,14 +377,14 @@
       align-items: center;
     }
     .speaker-drawer {
-      background: #0f172a;
-      border: 1px solid #1e293b;
+      background: #F8FAFC;
+      border: 1.5px solid #CBD5E1;
       border-radius: 8px;
-      padding: 12px 16px;
-      font-size: 13.5px;
-      line-height: 1.6;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.55;
       display: none;
-      max-height: 160px;
+      max-height: 140px;
       overflow-y: auto;
     }
     .speaker-drawer.visible {
@@ -246,192 +393,60 @@
     .notes-tabs {
       display: flex;
       gap: 8px;
-      margin-bottom: 8px;
-      border-bottom: 1px solid #334155;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #E2E8F0;
       padding-bottom: 4px;
     }
     .note-tab {
       font-size: 11px;
       font-weight: 700;
-      color: #94a3b8;
+      color: #64748B;
       cursor: pointer;
       padding: 2px 8px;
       border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+    .note-tab:hover {
+      color: #0F172A;
+      background: #E2E8F0;
     }
     .note-tab.active {
-      background: #3b82f6;
-      color: #fff;
+      background: #0284C7;
+      color: #FFFFFF;
     }
 
-    /* Textbook Styles */
-    .book-mockup {
-      position: relative;
-      width: 100%;
-      height: 240px;
-      background: linear-gradient(135deg, #1e293b, #0f172a);
-      border: 2px solid #334155;
-      border-radius: 10px;
-      padding: 18px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .book-spine {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 14px;
-      background: #090d16;
-      border-right: 1px solid #475569;
-    }
-    .book-lines {
-      display: flex;
-      flex-direction: column;
-      gap: 9px;
-      margin-left: 14px;
-    }
-    .book-line {
-      height: 8px;
-      background: #334155;
-      border-radius: 4px;
-      width: 100%;
-    }
-    .book-line.short { width: 65%; }
-    .book-line.medium { width: 85%; }
-    .laser-bar {
-      position: absolute;
-      left: 16px;
-      right: 16px;
-      height: 4px;
-      background: linear-gradient(90deg, transparent, #f43f5e, #f59e0b, transparent);
-      box-shadow: 0 0 15px #f43f5e;
-      animation: scanLaser 3s infinite ease-in-out;
-    }
-    .index-letter-badge {
-      background: #3b82f6;
-      color: #fff;
-      font-weight: 800;
-      width: 28px;
-      height: 28px;
-      border-radius: 4px;
-      display: flex;
+    /* Tag pills */
+    .tag-badge {
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      font-size: 13px;
-    }
-    .index-entry-card {
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.5);
-      border-radius: 6px;
-      padding: 10px 14px;
-      animation: greenGlow 2.5s infinite ease-in-out;
-    }
-
-    /* Desk Notepad Styles */
-    .notepad-mockup {
-      background: #fef3c7;
-      color: #78350f;
-      border-radius: 6px;
-      padding: 14px;
-      box-shadow: 4px 8px 20px rgba(0,0,0,0.5);
-      font-family: monospace;
-      font-weight: 600;
-      border-top: 10px solid #b45309;
-    }
-    .notepad-line {
-      border-bottom: 1px dashed #d97706;
-      padding: 5px 0;
-      display: flex;
-      justify-content: space-between;
-      font-size: 11.5px;
-    }
-
-    /* Bloom Filter Bit Array */
-    .bit-array-grid {
-      display: grid;
-      grid-template-columns: repeat(10, 1fr);
       gap: 6px;
-      margin: 12px 0;
-    }
-    .bit-cell {
-      background: #1e293b;
-      border: 2px solid #475569;
-      border-radius: 4px;
-      height: 38px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-family: monospace;
-    }
-    .bit-cell.zero { color: #94a3b8; }
-    .bit-cell.one {
-      background: rgba(16, 185, 129, 0.2);
-      border-color: #10b981;
-      color: #34d399;
-    }
-    .bit-cell.fail-target {
-      background: rgba(244, 63, 94, 0.25);
-      border-color: #f43f5e;
-      color: #f43f5e;
-      animation: pulseGlow 1.8s infinite ease-in-out;
-    }
-
-    /* Railway Track for Skip Pointers */
-    .railway-track {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 8px;
-      background: #111827;
-      border-radius: 8px;
-      border: 1px solid #374151;
-    }
-    .doc-station {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      background: #1f2937;
-      border: 2px solid #6b7280;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: 700;
-      font-size: 11.5px;
-      z-index: 2;
+      background: #F1F5F9;
+      color: #1E293B;
+      border: 1px solid #CBD5E1;
     }
-    .doc-station.match {
-      background: #065f46;
-      border-color: #34d399;
-      color: #ecfdf5;
-      box-shadow: 0 0 12px rgba(52, 211, 153, 0.6);
+    .tag-badge.crimson {
+      background: #FFF1F2;
+      color: #BE123C;
+      border-color: #FECDD3;
     }
-
-    /* Storefront vs Vault Styles */
-    .dual-system-grid {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 16px;
-      align-items: center;
+    .tag-badge.blue {
+      background: #F0F9FF;
+      color: #0369A1;
+      border-color: #BAE6FD;
     }
-    .system-box {
-      background: #1e293b;
-      border: 2px solid #334155;
-      border-radius: 10px;
-      padding: 18px;
-      text-align: center;
+    .tag-badge.teal {
+      background: #F0FDFA;
+      color: #0F766E;
+      border-color: #99F6E4;
     }
-    .system-box.vault {
-      border-color: #f59e0b;
-      background: linear-gradient(145deg, #1e1e24, #2a2015);
-    }
-    .system-box.storefront {
-      border-color: #06b6d4;
-      background: linear-gradient(145deg, #15222e, #0e2936);
+    .tag-badge.amber {
+      background: #FEFCE8;
+      color: #A16207;
+      border-color: #FEF08A;
     }
   </style>
 </head>
@@ -441,7 +456,7 @@
   <header>
     <div class="brand">
       <span class="brand-badge">CO5173</span>
-      <span>Cassandra vs Elasticsearch</span>
+      <span>Storage Engine Duality: Cassandra vs Elasticsearch</span>
     </div>
     <div class="nav-tools">
       <select id="slideSelect" class="slide-select" onchange="jumpToSlide(this.value)">
@@ -469,8 +484,8 @@
   <!-- Footer Navigation & Speaker Drawer -->
   <footer>
     <div class="footer-bar">
-      <div style="font-size: 13px; color: #94a3b8; font-family: monospace;" id="slideCounter">
-        Slide 1 of 32
+      <div style="font-size: 12.5px; color: #64748B; font-family: ui-monospace, monospace; font-weight: 600;" id="slideCounter">
+        Slide 1 of 23
       </div>
       <div style="display: flex; gap: 8px;">
         <button class="btn" onclick="prevSlide()" title="Previous Slide [←]">◀ Prev</button>
@@ -530,19 +545,28 @@
       `;
 
       updateNotesContent();
+
+      if (window.renderMathInElement) {
+        renderMathInElement(stage, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+          ]
+        });
+      }
     }
 
     function updateNotesContent() {
       const s = slides[currentIdx];
       const container = document.getElementById('notesContent');
       if (currentNoteTab === 'en') {
-        container.innerHTML = `<div style="color: #93c5fd;"><strong>EN:</strong> ${s.script_en}</div>`;
+        container.innerHTML = `<div style="color: #0369A1;"><strong>EN:</strong> ${s.script_en}</div>`;
       } else if (currentNoteTab === 'vi') {
-        container.innerHTML = `<div style="color: #6ee7b7;"><strong>VI:</strong> ${s.script_vi}</div>`;
+        container.innerHTML = `<div style="color: #0F766E;"><strong>VI:</strong> ${s.script_vi}</div>`;
       } else {
         container.innerHTML = `
-          <div style="color: #93c5fd; margin-bottom: 8px;"><strong>EN:</strong> ${s.script_en}</div>
-          <div style="color: #6ee7b7;"><strong>VI:</strong> ${s.script_vi}</div>
+          <div style="color: #0369A1; margin-bottom: 6px;"><strong>EN:</strong> ${s.script_en}</div>
+          <div style="color: #0F766E;"><strong>VI:</strong> ${s.script_vi}</div>
         `;
       }
     }

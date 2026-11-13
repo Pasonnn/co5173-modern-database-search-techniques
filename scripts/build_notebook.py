@@ -72,18 +72,23 @@ To eliminate mental context-switching, this notebook and our presentation unify 
 ---
 ### Table of Contents
 1. [Google Colab & Environment Setup](#setup)
-2. [Part 1: Apache Cassandra (LSM-Tree Storage Engine)](#part1)
-3. [Part 2: Elasticsearch (Inverted Index & Okapi BM25)](#part2)
-4. [Part 3: Head-to-Head Benchmarking on Real Datasets](#part3)
-5. [Part 4: Production Architecture (CQRS via CDC Stream)](#part4)
-6. [Summary & Academic References](#summary)
+2. [Benchmark Datasets & Workload Grounding](#datasets)
+3. [Part 1: Apache Cassandra (LSM-Tree Storage Engine)](#part1)
+4. [Part 2: Elasticsearch (Inverted Index & Okapi BM25)](#part2)
+5. [Part 3: Empirical Benchmarking on Real Datasets](#part3)
+6. [Part 4: Production Architecture (CQRS via CDC Stream)](#part4)
+7. [Summary & Academic References](#summary)
 """)
 
     # Setup cell with Colab auto-clone
-    add_md("""---
+    add_md(f"""---
 <a id="setup"></a>
 ## 1. Environment & Module Setup
-This cell automatically checks if you are running in Google Colab or locally, clones the repository if necessary, and imports the zero-dependency reference engines.""")
+This cell automatically prepares the runtime environment whether you execute locally or in Google Colab:
+- **Local execution:** Uses current repository root directly.
+- **Google Colab execution:** Detects hosted environment, manages directory navigation, and handles repository cloning (including support for private repositories via Colab Secrets `GITHUB_TOKEN`).
+- **Dependencies:** 100% zero external dependencies (pure Python stdlib).
+""")
 
     add_code("""# Setup script paths
 import sys
@@ -91,11 +96,50 @@ import os
 import time
 from pathlib import Path
 
-# If running on Google Colab, clone the project repository
+# If running on Google Colab, ensure repository is cloned and working directory is set
 if 'google.colab' in sys.modules:
-    print("Running in Google Colab environment. Cloning repository...")
-    !git clone https://github.com/Pasonnn/co5173-modern-database-search-techniques.git
-    %cd co5173-modern-database-search-techniques
+    repo_name = "co5173-modern-database-search-techniques"
+    repo_url = f"https://github.com/Pasonnn/{repo_name}.git"
+    content_dir = Path("/content") / repo_name
+
+    if Path.cwd().name == repo_name:
+        print(f"✓ Already inside repository: {Path.cwd()}")
+    elif content_dir.exists():
+        os.chdir(content_dir)
+        print(f"✓ Switched working directory to: {Path.cwd()}")
+    else:
+        print("Running in Google Colab environment. Preparing repository...")
+        token = None
+        try:
+            from google.colab import userdata
+            token = userdata.get('GITHUB_TOKEN')
+        except Exception:
+            token = None
+
+        clone_url = f"https://{token}@github.com/Pasonnn/{repo_name}.git" if token else repo_url
+        exit_code = os.system(f"git clone {clone_url}")
+
+        if exit_code != 0 and not content_dir.exists():
+            print("\\n" + "=" * 72)
+            print("⚠️ GIT CLONE ENCOUNTERED AN AUTHENTICATION ISSUE.")
+            print("Cause: Repository is currently set to PRIVATE on GitHub.")
+            print("\\nOptions to resolve:")
+            print("  1. (Easiest) Set repo visibility to PUBLIC on GitHub:")
+            print("     Command: gh repo edit Pasonnn/co5173-modern-database-search-techniques --visibility public")
+            print("  2. (Private) Add GITHUB_TOKEN to Google Colab Secrets:")
+            print("     Click 🔑 (Secrets) in Colab left sidebar -> Name: GITHUB_TOKEN -> Value: <PAT>")
+            print("=" * 72 + "\\n")
+            try:
+                import getpass
+                tok = getpass.getpass("Or enter GitHub PAT here (press Enter to skip): ").strip()
+                if tok:
+                    os.system(f"git clone https://{tok}@github.com/Pasonnn/{repo_name}.git")
+            except Exception:
+                pass
+
+        if content_dir.exists():
+            os.chdir(content_dir)
+            print(f"✓ Switched working directory to: {Path.cwd()}")
 
 # Ensure local repository root is in sys.path
 root_dir = Path.cwd()
@@ -108,12 +152,59 @@ from src.inverted_index import InvertedIndex, tokenize
 from benchmarks.data_loader import get_numerical_dataset, get_text_corpus
 
 print("Environment successfully initialized.")
+print(f"Working Directory: {Path.cwd()}")
 print("Loaded reference storage engines: LSMTree (Cassandra) & InvertedIndex (Elasticsearch).")""")
+
+    # Benchmark Datasets Section
+    add_md(r"""---
+<a id="datasets"></a>
+## 2. Benchmark Datasets & Workload Grounding
+To bridge storage engine theory (RUM Conjecture) and empirical reality, this project evaluates directly on two curated real-world open datasets pre-packaged in the repository under `data/`:
+
+### Summary of Datasets
+
+| Dataset | Origin & Source | Local Cache Path | Size in Repo | Target Storage Engine | Role in Benchmarking |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **World Cities Registry** | [OpenData World Cities](https://raw.githubusercontent.com/datasets/world-cities/master/data/world-cities.csv) | `data/world_cities_ids.txt` | 34,195 GeoNameIDs ($N=10,000$ active benchmark sample) | **Apache Cassandra (LSM-Tree)** | Primary key ingestion, sequential SSTable flushes, binary search over sparse fence pointers, and 10-bit Bloom filter negative fast-fail pruning ($3.42\ \mu\text{s}$, 100% disk reads avoided). |
+| **Quotes Corpus** | [dwyl/quotes Open Collection](https://raw.githubusercontent.com/dwyl/quotes/master/quotes.json) | `data/quotes_corpus.json` | 1,655 natural language quotes | **Elasticsearch (Inverted Index)** | Full-text tokenization, posting list construction, skip-pointer Boolean AND leapfrogging ($71.5\times$ speedup over linear scan), Okapi BM25 relevance scoring ($k_1=1.2, b=0.75$), and memory amplification evaluation ($15\times$ higher RAM). |
+
+### Dataset Access & Offline Resilience
+The dataset loader (`benchmarks/data_loader.py`) implements a three-tier fallback architecture:
+1. **Tier 1 (Zero-Network Local Cache):** Reads directly from `data/` for instantaneous 100% offline reproducibility.
+2. **Tier 2 (Remote Fetch Fallback):** Automatically streams raw CSV/JSON from GitHub if local cache files are absent.
+3. **Tier 3 (Deterministic Synthetic Generators):** Generates lognormal cluster keys and Zipfian distributions ($\alpha=1.25$) if network and files are both unavailable.
+""")
+
+    add_code("""# Inspect and preview the benchmark datasets
+from benchmarks.data_loader import get_numerical_dataset, get_text_corpus
+
+cities_preview = get_numerical_dataset(n=10000)
+quotes_preview = get_text_corpus(n=1655)
+
+print("=" * 72)
+print("DATASET 1: World Cities Registry (Cassandra Primary Keys)")
+print("=" * 72)
+print(f"• Total records loaded: {len(cities_preview):,} records")
+print(f"• Key sample (first 10): {cities_preview[:10]}")
+print(f"• Key range: min={min(cities_preview):,}, max={max(cities_preview):,}")
+print(f"• Distribution: Non-contiguous real-world GeoNameIDs reflecting geographic clustering.")
+
+print("\\n" + "=" * 72)
+print("DATASET 2: Quotes Corpus (Elasticsearch Full-Text Documents)")
+print("=" * 72)
+print(f"• Total documents loaded: {len(quotes_preview):,} quotes")
+print("• Sample records:")
+for i in range(3):
+    q = quotes_preview[i]
+    print(f"  [{q['id']}] Author: {q.get('author', 'Unknown')}")
+    print(f"      Text:   \\"{q['text']}\\"")
+print("• Characteristics: Natural Zipfian word frequencies, real-world English stopwords, variable document lengths.")
+print("=" * 72)""")
 
     # Part 1 Intro
     add_md("""---
 <a id="part1"></a>
-## 2. Part 1: Apache Cassandra (LSM-Tree Mechanics)
+## 3. Part 1: Apache Cassandra (LSM-Tree Mechanics)
 **Analogy:** The Archive Intake Dock — Optimizing for high-velocity append writes without random disk seeks.
 
 We demonstrate the four fundamental phases of LSM storage:
@@ -214,7 +305,7 @@ print("✓ Cassandra LSM-Tree demo complete.")""")
     # Part 2 Intro
     add_md("""---
 <a id="part2"></a>
-## 3. Part 2: Elasticsearch (Inverted Index & Okapi BM25)
+## 4. Part 2: Elasticsearch (Inverted Index & Okapi BM25)
 **Analogy:** The Public Card Catalog Room — Pre-computing inverted term-to-document postings for instant search.
 
 We demonstrate the four core retrieval mechanics:
@@ -317,20 +408,45 @@ print(f"  • Empirical Acceleration Speedup:       {speedup:8.1f}× Faster!")
 print("✓ Elasticsearch Inverted Index demo complete.")""")
 
     # Part 3 Intro
-    add_md("""---
+    add_md(r"""---
 <a id="part3"></a>
-## 4. Part 3: Empirical Benchmarking on Real Datasets
-We evaluate the storage engines across two real-world datasets:
-1. **World Cities Dataset ($N=10,000$):** Primary key ingestion and point lookup scalability.
-2. **Quotes Corpus ($N=1,655$):** Natural language lexical search, skip-pointer evaluation, and memory footprint ratios.""")
+## 5. Part 3: Empirical Benchmarking on Real Datasets
+
+### Dataset Profiling & Provenance
+To validate storage engine mechanics under realistic data distributions rather than artificial mocks, this project benchmarks across two open datasets pre-packaged under `data/`:
+
+| Dataset Dimension | **Dataset 1: World Cities Registry** | **Dataset 2: Quotes Corpus** |
+| :--- | :--- | :--- |
+| **Origin & Source** | [OpenData World Cities](https://raw.githubusercontent.com/datasets/world-cities/master/data/world-cities.csv) | [dwyl/quotes Collection](https://raw.githubusercontent.com/dwyl/quotes/master/quotes.json) |
+| **Local Cache Path** | `data/world_cities_ids.txt` | `data/quotes_corpus.json` |
+| **Raw Sample Size** | 34,195 GeoNameIDs ($N=10,000$ to $20,000$ active benchmark sample) | 1,655 natural language quotes |
+| **Data Schema** | Unique integer primary keys (`geonameid: int`) | JSON records: `{"id": int, "text": str, "author": str}` |
+| **Statistical Nature** | Real non-contiguous ID gaps, geographic clustering | Natural Zipfian word frequency distribution, variable document lengths |
+| **Evaluated Engine** | **Apache Cassandra (LSM-Tree)** | **Elasticsearch (Inverted Index)** |
+| **Tested Invariants** | • Ingestion throughput into MemTable & sequential SSTable flushes<br>• Binary search over sparse fence pointers<br>• Bloom Filter negative pruning ($3.42\ \mu\text{s}$ fast-fail, 100% disk reads avoided) | • FST Term Dictionary & posting list construction<br>• Skip-pointer leapfrogging intersection ($71.5\times$ speedup)<br>• Okapi BM25 relevance scoring ($k_1=1.2, b=0.75$) |
+
+#### Zero-Dependency & Offline Fallback Architecture
+Both datasets are pre-packaged directly in the repository's `data/` directory. The data loader (`benchmarks/data_loader.py`) implements automated fallback:
+1. **Local Offline Cache:** Reads directly from `data/` with zero network requests.
+2. **Upstream Remote Fetch:** Downloads directly from raw GitHub endpoints if cache files are missing.
+3. **Deterministic Synthetic Generators:** Generates lognormal geographical clusters or Zipfian power-law distributions ($\alpha=1.25$) if completely offline without data files.
+""")
 
     add_code("""# Load Datasets & Measure Memory Footprint Ratio
 city_keys = get_numerical_dataset(n=10000)
 quotes = get_text_corpus(n=1655)
 
-print(f"Loaded Datasets:")
-print(f"  • World Cities Primary Keys: {len(city_keys):,} records")
-print(f"  • Quotes Corpus: {len(quotes):,} documents with {len(big_idx.doc_lengths):,} indexed docs")
+print("=== LOADED BENCHMARK DATASET PROFILES ===")
+print("1. World Cities Dataset (Cassandra LSM-Tree Key Workload):")
+print(f"   • Total records loaded: {len(city_keys):,} primary keys")
+print(f"   • Sample GeoNameIDs:    {city_keys[:5]} ...")
+print(f"   • Min / Max Key range:  {min(city_keys):,} -> {max(city_keys):,}")
+
+print(f"\\n2. Natural Language Quotes Corpus (Elasticsearch Full-Text Workload):")
+print(f"   • Total documents:      {len(quotes):,} quotes")
+print(f"   • Indexed terms in FST: {len(big_idx.postings):,} unique vocabulary terms")
+print(f"   • Sample document 0:    [{quotes[0]['author']}] \\"{quotes[0]['text'][:60]}...\\"")
+print(f"   • Sample document 1:    [{quotes[1]['author']}] \\"{quotes[1]['text'][:60]}...\\"")
 
 # Calculate memory footprints
 import sys
@@ -356,7 +472,7 @@ print("Conclusion: Elasticsearch buys microsecond search speed by consuming 15×
     # Part 4 Intro
     add_md("""---
 <a id="part4"></a>
-## 5. Part 4: Production Architecture (CQRS via CDC Stream)
+## 6. Part 4: Production Architecture (CQRS via CDC Stream)
 **Analogy:** Connecting the Archival Vault and the Public Card Catalog via a Conveyor Belt.
 
 **Why Not Dual Writes?**
@@ -417,7 +533,7 @@ print("✓ CQRS architecture demonstration complete.")""")
     # Summary
     add_md(f"""---
 <a id="summary"></a>
-## 6. Summary: Architectural Decision Matrix
+## 7. Summary: Architectural Decision Matrix
 
 | Workload Dimension | Apache Cassandra (LSM-Tree) | Elasticsearch (Inverted Index) |
 | :--- | :--- | :--- |
